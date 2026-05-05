@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Order Collection Queue</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&amp;family=Manrope:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-bright": "#383a37",
+                        "outline-variant": "#434843",
+                        "on-tertiary": "#4a2800",
+                        "on-error": "#690005",
+                        "surface": "#121412",
+                        "surface-dim": "#121412",
+                        "on-secondary-fixed-variant": "#58441d",
+                        "tertiary-container": "#573000",
+                        "background": "#121412",
+                        "secondary-container": "#58441d",
+                        "primary": "#78dc77",
+                        "on-surface": "#e2e3df",
+                        "error": "#ffb4ab",
+                        "primary-container": "#00440e",
+                        "on-tertiary-fixed-variant": "#693c00",
+                        "on-primary-container": "#54b757",
+                        "secondary-fixed-dim": "#e0c291",
+                        "error-container": "#93000a",
+                        "on-secondary-fixed": "#271900",
+                        "on-secondary-container": "#ceb181",
+                        "inverse-primary": "#006e1c",
+                        "surface-container": "#1e201e",
+                        "secondary": "#e0c291",
+                        "on-primary-fixed": "#002204",
+                        "on-primary": "#00390a",
+                        "surface-container-low": "#1a1c1a",
+                        "on-surface-variant": "#c3c8c1",
+                        "on-tertiary-container": "#ec8c00",
+                        "surface-container-high": "#292a28",
+                        "tertiary": "#ffb870",
+                        "tertiary-fixed": "#ffdcbe",
+                        "tertiary-fixed-dim": "#ffb870",
+                        "surface-container-highest": "#333533",
+                        "on-tertiary-fixed": "#2c1600",
+                        "primary-fixed-dim": "#78dc77",
+                        "on-error-container": "#ffdad6",
+                        "primary-fixed": "#94f990",
+                        "on-background": "#e2e3df",
+                        "inverse-on-surface": "#2f312e",
+                        "surface-variant": "#333533",
+                        "surface-tint": "#78dc77",
+                        "surface-container-lowest": "#0d0f0d",
+                        "inverse-surface": "#e2e3df",
+                        "secondary-fixed": "#fddeab",
+                        "outline": "#8d928b",
+                        "on-secondary": "#3f2d08",
+                        "on-primary-fixed-variant": "#005313"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Space Grotesk"],
+                        "display": ["Space Grotesk"],
+                        "body": ["Manrope"],
+                        "label": ["Manrope"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #000000; /* Overriding for pure black constraint */
+            color: #ffffff;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        /* Typography overrides for extreme scale */
+        .text-giant {
+            font-size: 8rem;
+            line-height: 1.1;
+        }
+        .text-colossal {
+            font-size: 12rem;
+            line-height: 1;
+        }
+        
+        /* Specific colors requested in prompt that fall outside strict brand but are mandatory constraints */
+        .text-status-ready { color: #facc15; } /* Bright Yellow */
+        .text-category-drinks { color: #3b82f6; } /* Bright Blue */
+        .text-category-food { color: #b45309; } /* Brown */
+    </style>
+</head>
+<body class="font-display">
+<!-- TopAppBar equivalent -->
+<header class="w-full flex justify-center items-center h-32 md:h-40 shrink-0">
+<h1 class="text-7xl md:text-[5rem] font-bold text-on-surface uppercase tracking-tight">Order Collection</h1>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 w-full flex flex-row p-8 gap-12">
+<!-- Left Column: Drinks and Snacks -->
+<section class="flex-1 flex flex-col items-center">
+<div class="flex items-center gap-4 mb-8">
+<span class="material-symbols-outlined text-[4rem] text-category-drinks" style="font-variation-settings: 'FILL' 1;">local_cafe</span>
+<h2 class="text-5xl font-bold text-category-drinks tracking-tight whitespace-nowrap">Drinks and Snacks</h2>
+</div>
+<div class="flex flex-col items-center justify-around flex-1 w-full gap-4">
+<!-- Ready (Yellow) -->
+<div class="text-colossal font-bold text-status-ready tracking-tighter">
+                    142
+                </div>
+<!-- Previous (White) -->
+<div class="text-giant font-bold text-on-surface tracking-tighter opacity-90">
+                    141
+                </div>
+<div class="text-giant font-bold text-on-surface tracking-tighter opacity-80">
+                    139
+                </div>
+<div class="text-giant font-bold text-on-surface tracking-tighter opacity-70">
+                    138
+                </div>
+</div>
+</section>
+<!-- Vertical Divider (Visual separation without harsh lines) -->
+<div class="w-2 rounded-full bg-surface-container-high mx-4 my-8 opacity-50"></div>
+<!-- Right Column: Food -->
+<section class="flex-1 flex flex-col items-center">
+<div class="flex items-center gap-4 mb-8">
+<span class="material-symbols-outlined text-[4rem] text-category-food" style="font-variation-settings: 'FILL' 1;">restaurant</span>
+<h2 class="text-5xl font-bold text-category-food tracking-tight whitespace-nowrap">Food</h2>
+</div>
+<div class="flex flex-col items-center justify-around flex-1 w-full gap-4">
+<!-- Ready (Yellow) -->
+<div class="text-colossal font-bold text-status-ready tracking-tighter">
+                    089
+                </div>
+<!-- Previous (White) -->
+<div class="text-giant font-bold text-on-surface tracking-tighter opacity-90">
+                    088
+                </div>
+<div class="text-giant font-bold text-on-surface tracking-tighter opacity-80">
+                    086
+                </div>
+<div class="text-giant font-bold text-on-surface tracking-tighter opacity-70">
+                    085
+                </div>
+</div>
+</section>
+</main>
+</body></html>
