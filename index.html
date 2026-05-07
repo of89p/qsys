@@ -1,153 +1,127 @@
 <!DOCTYPE html>
-<html class="dark" lang="en"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Order Collection Queue</title>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&family=Manrope:wght@400;600&display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-<script id="tailwind-config">
-    tailwind.config = {
-        darkMode: "class",
-        theme: {
-            extend: {
-                "colors": {
-                    "surface-bright": "#383a37", "surface": "#121412", "background": "#121412",
-                    "on-surface": "#e2e3df", "surface-container-high": "#292a28"
-                },
-                "fontFamily": {
-                    "headline": ["Space Grotesk"], "display": ["Space Grotesk"], "body": ["Manrope"]
-                }
-            }
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Order Queue System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #000000;
+            color: #ffffff;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            font-family: sans-serif;
         }
-    }
-</script>
-<style>
-    body {
-        background-color: #000000;
-        color: #ffffff; margin: 0; padding: 0; height: 100vh;
-        display: flex; flex-direction: column; overflow: hidden;
-    }
-    .text-giant { font-size: 8rem; line-height: 1.1; transition: all 0.3s ease; }
-    .text-colossal { font-size: 12rem; line-height: 1; transition: all 0.3s ease; }
-    .text-status-ready { color: #facc15; } /* Bright Yellow */
-    .text-category-drinks { color: #3b82f6; } /* Bright Blue */
-    .text-category-food { color: #b45309; } /* Brown */
-</style>
+        /* Color Constraints */
+        .text-ready { color: #facc15; } /* Bright Yellow */
+        .header-drinks { color: #3b82f6; } /* Bright Blue */
+        .header-food { color: #b45309; }   /* Brown */
+        
+        /* Typography Scaling */
+        .num-new { font-size: 18rem; line-height: 1; font-weight: 800; }
+        .num-past { font-size: 11rem; line-height: 1.1; color: #ffffff; font-weight: 700; opacity: 0.8; }
+        
+        /* Active Mode Indicator */
+        .active-column { border-bottom: 8px solid white; padding-bottom: 10px; transition: all 0.2s; }
+        .column-divider { width: 4px; background: #222; margin: 40px 0; }
+    </style>
 </head>
-<body class="font-display">
-    <header class="w-full flex justify-center items-center h-32 md:h-40 shrink-0">
-        <h1 class="text-7xl md:text-[5rem] font-bold text-on-surface uppercase tracking-tight">Order Collection</h1>
+<body>
+
+    <header class="w-full flex justify-center items-center h-40 shrink-0">
+        <h1 class="text-7xl font-bold uppercase tracking-tighter">Order Collection</h1>
     </header>
 
-    <main class="flex-1 w-full flex flex-row p-8 gap-12">
+    <main class="flex-1 w-full flex flex-row px-16 pb-12 gap-12">
         <!-- Drinks Column -->
         <section class="flex-1 flex flex-col items-center">
-            <div class="flex items-center gap-4 mb-8">
-                <span class="material-symbols-outlined text-[4rem] text-category-drinks" style="font-variation-settings: 'FILL' 1;">local_cafe</span>
-                <h2 class="text-5xl font-bold text-category-drinks tracking-tight whitespace-nowrap">Drinks and Snacks</h2>
+            <div id="drinks-header" class="mb-12">
+                <h2 class="text-6xl font-black header-drinks uppercase tracking-tight">Drinks and Snacks</h2>
             </div>
-            <div id="drinks-container" class="flex flex-col items-center justify-around flex-1 w-full gap-4">
-                <!-- Numbers will be injected here by JS -->
+            <div id="drinks-list" class="flex flex-col items-center justify-start gap-12 w-full">
+                <!-- Numbers injected here -->
             </div>
         </section>
 
-        <!-- Divider -->
-        <div class="w-2 rounded-full bg-surface-container-high mx-4 my-8 opacity-50"></div>
+        <div class="column-divider"></div>
 
         <!-- Food Column -->
         <section class="flex-1 flex flex-col items-center">
-            <div class="flex items-center gap-4 mb-8">
-                <span class="material-symbols-outlined text-[4rem] text-category-food" style="font-variation-settings: 'FILL' 1;">restaurant</span>
-                <h2 class="text-5xl font-bold text-category-food tracking-tight whitespace-nowrap">Food</h2>
+            <div id="food-header" class="mb-12 active-column">
+                <h2 class="text-6xl font-black header-food uppercase tracking-tight">Food</h2>
             </div>
-            <div id="food-container" class="flex flex-col items-center justify-around flex-1 w-full gap-4">
-                <!-- Numbers will be injected here by JS -->
+            <div id="food-list" class="flex flex-col items-center justify-start gap-12 w-full">
+                <!-- Numbers injected here -->
             </div>
         </section>
     </main>
 
-    <!-- Hidden Audio Element for the Ding -->
-    <audio id="ding-sound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
+    <!-- Notification Sound -->
+    <audio id="ding" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
 
     <script>
-        // Initial State
-        let drinksQueue = ['142', '141', '139', '138'];
-        let foodQueue = ['089', '088', '086', '085'];
-        
-        let inputBuffer = '';
-        let currentTarget = 'FOOD'; // Defaults to Food
-        const maxDisplay = 4;
+        let drinks = [];
+        let food = [];
+        let buffer = "";
+        let mode = "FOOD"; // Starting mode
 
-        // Render functions
-        function renderQueues() {
-            const drinksContainer = document.getElementById('drinks-container');
-            const foodContainer = document.getElementById('food-container');
-            
-            drinksContainer.innerHTML = drinksQueue.map((num, i) => generateNumberHTML(num, i)).join('');
-            foodContainer.innerHTML = foodQueue.map((num, i) => generateNumberHTML(num, i)).join('');
+        function render() {
+            const dList = document.getElementById('drinks-list');
+            const fList = document.getElementById('food-list');
+            const dHead = document.getElementById('drinks-header');
+            const fHead = document.getElementById('food-header');
+
+            // Update Mode Visuals
+            dHead.className = mode === "DRINKS" ? "mb-12 active-column" : "mb-12 opacity-40";
+            fHead.className = mode === "FOOD" ? "mb-12 active-column" : "mb-12 opacity-40";
+
+            // Render Numbers (Max 4)
+            dList.innerHTML = drinks.map((n, i) => `<div class="${i===0 ? 'num-new text-ready' : 'num-past'}">${n}</div>`).join('');
+            fList.innerHTML = food.map((n, i) => `<div class="${i===0 ? 'num-new text-ready' : 'num-past'}">${n}</div>`).join('');
         }
 
-        function generateNumberHTML(num, index) {
-            if (index === 0) {
-                return `<div class="text-colossal font-bold text-status-ready tracking-tighter">${num}</div>`;
-            } else {
-                let opacity = index === 1 ? 'opacity-90' : index === 2 ? 'opacity-80' : 'opacity-70';
-                return `<div class="text-giant font-bold text-on-surface tracking-tighter ${opacity}">${num}</div>`;
+        window.addEventListener('keydown', e => {
+            const key = e.key.toLowerCase();
+
+            // Switch Mode
+            if (key === 'd') { mode = "DRINKS"; render(); return; }
+            if (key === 'f') { mode = "FOOD"; render(); return; }
+
+            // Handle Numbers
+            if (/[0-9]/.test(key)) {
+                if (buffer.length < 3) buffer += key;
             }
-        }
 
-        // Logic to update the arrays safely
-        function updateQueue(type, num) {
-            let queue = type === 'DRINKS' ? drinksQueue : foodQueue;
-            
-            // If it exists, remove it so it can bump to the top
-            queue = queue.filter(item => item !== num);
-            
-            // Add to the front
-            queue.unshift(num);
-            
-            // Limit to 4 items
-            if (queue.length > maxDisplay) queue.pop();
-            
-            // Reassign
-            if (type === 'DRINKS') drinksQueue = queue;
-            else foodQueue = queue;
+            // Submit
+            if (key === 'enter' && buffer.length > 0) {
+                const finalNum = buffer.padStart(3, '0');
+                let targetArr = mode === "DRINKS" ? drinks : food;
 
-            // Play Sound
-            document.getElementById('ding-sound').play().catch(e => console.log("Audio play blocked by browser."));
-            
-            renderQueues();
-        }
+                // Unique Handling: Remove if exists to bump to top
+                targetArr = targetArr.filter(n => n !== finalNum);
+                targetArr.unshift(finalNum);
 
-        // Keyboard Listener
-        document.addEventListener('keydown', (e) => {
-            // Ignore key presses if a modifier is held (like Ctrl+R to refresh)
-            if (e.ctrlKey || e.altKey || e.metaKey) return;
+                // Limit history to 4
+                if (targetArr.length > 4) targetArr.pop();
 
-            if (e.key >= '0' && e.key <= '9') {
-                if (inputBuffer.length < 3) {
-                    inputBuffer += e.key;
-                }
-            } else if (e.key.toLowerCase() === 'd') {
-                currentTarget = 'DRINKS';
-                inputBuffer = '';
-            } else if (e.key.toLowerCase() === 'f') {
-                currentTarget = 'FOOD';
-                inputBuffer = '';
-            } else if (e.key === 'Enter') {
-                if (inputBuffer.length > 0) {
-                    let paddedNumber = inputBuffer.padStart(3, '0');
-                    updateQueue(currentTarget, paddedNumber);
-                    inputBuffer = ''; // Clear buffer after submission
-                }
-            } else if (e.key === 'Backspace') {
-                inputBuffer = inputBuffer.slice(0, -1);
+                // Save back
+                if (mode === "DRINKS") drinks = targetArr; else food = targetArr;
+                
+                // Sound and Reset
+                document.getElementById('ding').play().catch(() => {});
+                buffer = "";
+                render();
             }
+
+            // Correction
+            if (key === 'backspace') buffer = buffer.slice(0, -1);
         });
 
-        // Initial Render
-        renderQueues();
+        // Initial render
+        render();
     </script>
 </body>
 </html>
