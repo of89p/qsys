@@ -6,6 +6,9 @@ import requests
 
 API_URL = os.getenv("QSYS_QUEUE_URL", "http://127.0.0.1:8080/api/queue")
 LOG_LEVEL = os.getenv("QSYS_LOG_LEVEL", "INFO").upper()
+ACCEPT_ROW_DIGITS = os.getenv("QSYS_ACCEPT_ROW_DIGITS", "").lower() in {
+    "1", "true", "yes", "on"
+}
 RETRY_SECONDS = 5
 MAX_DIGITS = 3
 
@@ -23,19 +26,9 @@ FOOD_DEVICE_PATH = os.getenv(
     "/dev/input/by-id/usb-Logitech_USB_Receiver-if02-event-kbd"
 ).strip()
 
-# Map keycodes to actual numbers
-KEY_MAP = {
-    evdev.ecodes.KEY_0: '0',
-    evdev.ecodes.KEY_1: '1',
-    evdev.ecodes.KEY_2: '2',
-    evdev.ecodes.KEY_3: '3',
-    evdev.ecodes.KEY_4: '4',
-    evdev.ecodes.KEY_5: '5',
-    evdev.ecodes.KEY_6: '6',
-    evdev.ecodes.KEY_7: '7',
-    evdev.ecodes.KEY_8: '8',
-    evdev.ecodes.KEY_9: '9',
-    evdev.ecodes.KEY_BACKSPACE: 'BACKSPACE',
+# Keypad digit keycodes. Normal row digits are ignored by default so a regular
+# keyboard can keep working while this process observes the input device.
+KEYPAD_KEY_MAP = {
     evdev.ecodes.KEY_KP0: '0',
     evdev.ecodes.KEY_KP1: '1',
     evdev.ecodes.KEY_KP2: '2',
@@ -46,8 +39,25 @@ KEY_MAP = {
     evdev.ecodes.KEY_KP7: '7',
     evdev.ecodes.KEY_KP8: '8',
     evdev.ecodes.KEY_KP9: '9',
-    evdev.ecodes.KEY_ENTER: 'ENTER',
     evdev.ecodes.KEY_KPENTER: 'ENTER',
+}
+
+ROW_DIGIT_KEY_MAP = {
+    evdev.ecodes.KEY_0: '0',
+    evdev.ecodes.KEY_1: '1',
+    evdev.ecodes.KEY_2: '2',
+    evdev.ecodes.KEY_3: '3',
+    evdev.ecodes.KEY_4: '4',
+    evdev.ecodes.KEY_5: '5',
+    evdev.ecodes.KEY_6: '6',
+    evdev.ecodes.KEY_7: '7',
+    evdev.ecodes.KEY_8: '8',
+    evdev.ecodes.KEY_9: '9',
+}
+
+BUFFER_CONTROL_KEY_MAP = {
+    evdev.ecodes.KEY_ENTER: 'ENTER',
+    evdev.ecodes.KEY_BACKSPACE: 'BACKSPACE',
 }
 
 def key_name(event_code):
@@ -55,6 +65,21 @@ def key_name(event_code):
     if isinstance(name, (list, tuple)):
         return "/".join(name)
     return name
+
+def mapped_key_for_event(event_code, current_input):
+    key = KEYPAD_KEY_MAP.get(event_code)
+    if key is not None:
+        return key
+
+    if ACCEPT_ROW_DIGITS:
+        key = ROW_DIGIT_KEY_MAP.get(event_code)
+        if key is not None:
+            return key
+
+    if current_input:
+        return BUFFER_CONTROL_KEY_MAP.get(event_code)
+
+    return None
 
 def submit_number(station_name, number):
     try:
@@ -98,20 +123,22 @@ async def read_keypad(device_path, station_name):
 
         try:
             device = evdev.InputDevice(device_path)
-            logger.info("Reading %s keypad from %s", station_name, device_path)
-
-            # Grab the device so the inputs do not leak into the terminal or GUI.
-            device.grab()
+            logger.info(
+                "Reading %s keypad from %s without exclusive grab; non-keypad "
+                "input will pass through to the OS",
+                station_name,
+                device_path,
+            )
 
             async for event in device.async_read_loop():
                 if event.type != evdev.ecodes.EV_KEY or event.value != 1:
                     continue
 
                 event_name = key_name(event.code)
-                key = KEY_MAP.get(event.code)
+                key = mapped_key_for_event(event.code, current_input)
                 if key is None:
-                    logger.info(
-                        "%s keypad ignored unmapped key code=%s name=%s",
+                    logger.debug(
+                        "%s keypad ignored non-keypad key code=%s name=%s",
                         station_name,
                         event.code,
                         event_name,
@@ -164,10 +191,6 @@ async def read_keypad(device_path, station_name):
             logger.exception("Error reading %s keypad at %s", station_name, device_path)
         finally:
             if device is not None:
-                try:
-                    device.ungrab()
-                except OSError:
-                    pass
                 device.close()
 
         await asyncio.sleep(RETRY_SECONDS)

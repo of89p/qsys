@@ -24,8 +24,6 @@
         .num-new { font-size: 18rem; line-height: 1; font-weight: 800; }
         .num-past { font-size: 11rem; line-height: 1.1; color: #ffffff; font-weight: 700; opacity: 0.8; }
         
-        /* Active Mode Indicator */
-        .active-column { border-bottom: 8px solid white; padding-bottom: 10px; transition: all 0.2s; }
         .column-divider { width: 4px; background: #222; margin: 40px 0; }
     </style>
 </head>
@@ -50,7 +48,7 @@
 
         <!-- Food Column -->
         <section class="flex-1 flex flex-col items-center">
-            <div id="food-header" class="mb-12 active-column">
+            <div id="food-header" class="mb-12">
                 <h2 class="text-6xl font-black header-food uppercase tracking-tight">Food</h2>
             </div>
             <div id="food-list" class="flex flex-col items-center justify-start gap-12 w-full">
@@ -63,44 +61,42 @@
     <audio id="ding" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
 
     <script>
-    let drinks = [];
-    let food = [];
-    let mode = "FOOD";
+    (() => {
+    const state = {
+        drinks: [],
+        food: [],
+        mode: "FOOD",
+    };
 
     // 1. RENDER FUNCTION (Updates the screen)
     function render() {
         const dList = document.getElementById('drinks-list');
         const fList = document.getElementById('food-list');
-        const dHead = document.getElementById('drinks-header');
-        const fHead = document.getElementById('food-header');
-
-        dHead.className = mode === "DRINKS" ? "mb-12 active-column" : "mb-12 opacity-40";
-        fHead.className = mode === "FOOD" ? "mb-12 active-column" : "mb-12 opacity-40";
-
-        dList.innerHTML = drinks.map((n, i) => `<div class="${i===0 ? 'num-new text-ready' : 'num-past'}">${n}</div>`).join('');
-        fList.innerHTML = food.map((n, i) => `<div class="${i===0 ? 'num-new text-ready' : 'num-past'}">${n}</div>`).join('');
+        dList.innerHTML = state.drinks.map((n, i) => `<div class="${i===0 ? 'num-new text-ready' : 'num-past'}">${n}</div>`).join('');
+        fList.innerHTML = state.food.map((n, i) => `<div class="${i===0 ? 'num-new text-ready' : 'num-past'}">${n}</div>`).join('');
     }
 
     // 2. VIEWER LOGIC: TV asks the Pi for the latest numbers every 1 second
     setInterval(async () => {
         try {
-            const response = await fetch('/api/state');
+            const response = await fetch('/api/state', { cache: 'no-store' });
             const data = await response.json();
             
             // Check if there is a new number to trigger the Ding sound
-            if (JSON.stringify(drinks) !== JSON.stringify(data.drinks) || 
-                JSON.stringify(food) !== JSON.stringify(data.food)) {
+            if (JSON.stringify(state.drinks) !== JSON.stringify(data.drinks) || 
+                JSON.stringify(state.food) !== JSON.stringify(data.food)) {
                 document.getElementById('ding').play().catch(() => {});
             }
 
-            drinks = data.drinks;
-            food = data.food;
-            mode = data.mode;
+            state.drinks = data.drinks;
+            state.food = data.food;
+            state.mode = data.mode;
             render();
         } catch (err) { console.error("Waiting for server..."); }
     }, 1000);
 
     render();
+    })();
     </script>
 </body>
 </html>

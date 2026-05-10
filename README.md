@@ -113,6 +113,10 @@ DRINKS_DEVICE_PATH=/dev/input/by-id/<drinks-keypad-event-kbd> \
 ```
 
 The interceptor reads digits, accepts `Backspace`, and submits the number when `Enter` is pressed. Submitted numbers are padded to 3 digits on the display.
+It reads the input device without an exclusive grab, so non-keypad input passes
+through to the OS normally. By default it only treats keypad events such as
+`KEY_KP1` and `KEY_KPENTER` as order input. If your keypad reports plain number
+row keys instead, set `QSYS_ACCEPT_ROW_DIGITS=1`.
 
 Access to `/dev/input` usually requires the `input` group:
 
@@ -181,6 +185,7 @@ The interceptor supports these environment variables:
 | --- | --- | --- |
 | `QSYS_QUEUE_URL` | `http://127.0.0.1:8080/api/queue` | Server endpoint that receives keypad submissions. |
 | `QSYS_LOG_LEVEL` | `INFO` | Interceptor logging level. |
+| `QSYS_ACCEPT_ROW_DIGITS` | empty | Set to `1` only if your keypad sends normal number-row keycodes instead of keypad keycodes. |
 | `FOOD_DEVICE_PATH` | `/dev/input/by-id/usb-Logitech_USB_Receiver-if02-event-kbd` | Input device for the Food station. |
 | `DRINKS_DEVICE_PATH` | empty | Input device for the Drinks and Snacks station. |
 

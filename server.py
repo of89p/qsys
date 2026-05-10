@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, make_response, send_from_directory
 
 app = Flask(__name__)
 
@@ -9,17 +9,21 @@ state = {
     "mode": "FOOD"
 }
 
-MAX_VISIBLE_ORDERS = 4
+MAX_VISIBLE_ORDERS = 3
 
 # Serve the HTML page to the TV
 @app.route('/')
 def index():
-    return send_from_directory('.', 'index.html')
+    response = make_response(send_from_directory('.', 'index.html'))
+    response.headers['Cache-Control'] = 'no-store, max-age=0'
+    return response
 
 # The TV will constantly ask this URL: "Are there new numbers?"
 @app.route('/api/state', methods=['GET'])
 def get_state():
-    return jsonify(state)
+    response = jsonify(state)
+    response.headers['Cache-Control'] = 'no-store, max-age=0'
+    return response
 
 @app.route('/api/queue', methods=['POST'])
 def queue_number():
