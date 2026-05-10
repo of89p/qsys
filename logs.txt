@@ -1,0 +1,38 @@
+(.venv) ubin@raspberrypi:~/qsys $ FOOD_DEVICE_PATH=/dev/input/by-id/usb-Logitech_USB_Receiver-if02-event-kbd \
+> .venv/bin/python interceptor.py
+Reading food keypad from /dev/input/by-id/usb-Logitech_USB_Receiver-if02-event-kbd
+Error reading food keypad at /dev/input/by-id/usb-Logitech_USB_Receiver-if02-event-kbd: HTTPConnectionPool(host='127.0.0.1', port=8080): Max retries exceeded with url: /api/queue (Caused by NewConnectionError("HTTPConnection(host='127.0.0.1', port=8080): Failed to establish a new connection: [Errno 111] Connection refused"))
+Reading food keypad from /dev/input/by-id/usb-Logitech_USB_Receiver-if02-event-kbd
+Error reading food keypad at /dev/input/by-id/usb-Logitech_USB_Receiver-if02-event-kbd: HTTPConnectionPool(host='127.0.0.1', port=8080): Max retries exceeded with url: /api/queue (Caused by NewConnectionError("HTTPConnection(host='127.0.0.1', port=8080): Failed to establish a new connection: [Errno 111] Connection refused"))
+Reading food keypad from /dev/input/by-id/usb-Logitech_USB_Receiver-if02-event-kbd
+Error reading food keypad at /dev/input/by-id/usb-Logitech_USB_Receiver-if02-event-kbd: HTTPConnectionPool(host='127.0.0.1', port=8080): Max retries exceeded with url: /api/queue (Caused by NewConnectionError("HTTPConnection(host='127.0.0.1', port=8080): Failed to establish a new connection: [Errno 111] Connection refused"))
+^CTraceback (most recent call last):
+  File "/usr/lib/python3.11/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/asyncio/base_events.py", line 653, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/home/ubin/qsys/interceptor.py", line 97, in main
+    await asyncio.gather(*keypads)
+  File "/home/ubin/qsys/interceptor.py", line 84, in read_keypad
+    await asyncio.sleep(RETRY_SECONDS)
+  File "/usr/lib/python3.11/asyncio/tasks.py", line 639, in sleep
+    return await future
+           ^^^^^^^^^^^^
+asyncio.exceptions.CancelledError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/ubin/qsys/interceptor.py", line 100, in <module>
+    asyncio.run(main())
+  File "/usr/lib/python3.11/asyncio/runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/asyncio/runners.py", line 123, in run
+    raise KeyboardInterrupt()
+KeyboardInterrupt
+
+(.venv) ubin@raspberrypi:~/qsys $ 
+
