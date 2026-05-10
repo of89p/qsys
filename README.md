@@ -73,6 +73,8 @@ curl -X POST http://127.0.0.1:8080/api/queue \
 
 The display page is read-only. Order numbers should be submitted through
 `/api/queue`, either from the USB keypad interceptor or from a manual API call.
+The display receives live updates from `/api/events` using server-sent events.
+`/api/state` remains available as a snapshot endpoint for manual checks.
 
 ## Set Up USB Keypads
 

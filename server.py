@@ -1,4 +1,15 @@
-from flask import Flask, request, jsonify, make_response, send_from_directory
+import json
+import threading
+
+from flask import (
+    Flask,
+    Response,
+    jsonify,
+    make_response,
+    request,
+    send_from_directory,
+    stream_with_context,
+)
 
 app = Flask(__name__)
 
@@ -9,8 +20,20 @@ state = {
     "mode": "FOOD",
     "ding_id": 0,
 }
+state_changed = threading.Condition()
 
 MAX_VISIBLE_ORDERS = 3
+
+def state_snapshot():
+    return {
+        "drinks": list(state["drinks"]),
+        "food": list(state["food"]),
+        "mode": state["mode"],
+        "ding_id": state["ding_id"],
+    }
+
+def sse_event(event_name, data):
+    return f"event: {event_name}\ndata: {json.dumps(data)}\n\n"
 
 # Serve the HTML page to the TV
 @app.route('/')
@@ -19,11 +42,43 @@ def index():
     response.headers['Cache-Control'] = 'no-store, max-age=0'
     return response
 
-# The TV will constantly ask this URL: "Are there new numbers?"
+# State snapshot endpoint, useful for manual checks.
 @app.route('/api/state', methods=['GET'])
 def get_state():
-    response = jsonify(state)
+    with state_changed:
+        response = jsonify(state_snapshot())
     response.headers['Cache-Control'] = 'no-store, max-age=0'
+    return response
+
+@app.route('/api/events', methods=['GET'])
+def stream_state():
+    @stream_with_context
+    def event_stream():
+        with state_changed:
+            snapshot = state_snapshot()
+            last_ding_id = snapshot["ding_id"]
+
+        yield sse_event("state", snapshot)
+
+        while True:
+            with state_changed:
+                state_changed.wait_for(
+                    lambda: state["ding_id"] != last_ding_id,
+                    timeout=15,
+                )
+                snapshot = state_snapshot()
+
+            if snapshot["ding_id"] == last_ding_id:
+                yield ": heartbeat\n\n"
+                continue
+
+            last_ding_id = snapshot["ding_id"]
+            yield sse_event("state", snapshot)
+
+    response = Response(event_stream(), mimetype='text/event-stream')
+    response.headers['Cache-Control'] = 'no-cache'
+    response.headers['Connection'] = 'keep-alive'
+    response.headers['X-Accel-Buffering'] = 'no'
     return response
 
 @app.route('/api/queue', methods=['POST'])
@@ -39,15 +94,18 @@ def queue_number():
     if len(number) > 3:
         return jsonify({"status": "error", "message": "number must be at most 3 digits"}), 400
 
-    final_number = number.zfill(3)
-    queue = [existing for existing in state[station] if existing != final_number]
-    queue.insert(0, final_number)
-    state[station] = queue[:MAX_VISIBLE_ORDERS]
-    state["mode"] = station.upper()
-    state["ding_id"] += 1
+    with state_changed:
+        final_number = number.zfill(3)
+        queue = [existing for existing in state[station] if existing != final_number]
+        queue.insert(0, final_number)
+        state[station] = queue[:MAX_VISIBLE_ORDERS]
+        state["mode"] = station.upper()
+        state["ding_id"] += 1
+        snapshot = state_snapshot()
+        state_changed.notify_all()
 
-    return jsonify({"status": "success", "state": state})
+    return jsonify({"status": "success", "state": snapshot})
 
 if __name__ == '__main__':
     # Runs the server on your local Wi-Fi network
-    app.run(host='0.0.0.0', port=8080)
+    app.run(host='0.0.0.0', port=8080, threaded=True)
