@@ -25,6 +25,22 @@
         .num-past { font-size: 11rem; line-height: 1.1; color: #ffffff; font-weight: 700; opacity: 0.8; }
         
         .column-divider { width: 4px; background: #222; margin: 40px 0; }
+        .sound-enable {
+            position: fixed;
+            right: 24px;
+            bottom: 24px;
+            z-index: 10;
+            display: none;
+            background: #ffffff;
+            color: #000000;
+            border: 0;
+            border-radius: 4px;
+            padding: 16px 22px;
+            font-size: 1.25rem;
+            font-weight: 800;
+            cursor: pointer;
+        }
+        .sound-enable.visible { display: block; }
     </style>
 </head>
 <body>
@@ -58,7 +74,7 @@
     </main>
 
     <!-- Notification Sound -->
-    <audio id="ding" preload="auto" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
+    <button id="sound-enable" class="sound-enable" type="button">Enable Sound</button>
 
     <script>
     (() => {
@@ -69,7 +85,9 @@
         dingId: null,
     };
     const DING_CUTOFF_MS = 750;
-    let activeDing = null;
+    const DING_CUTOFF_SECONDS = DING_CUTOFF_MS / 1000;
+    let audioContext = null;
+    let activeDingNodes = null;
     let dingStopTimer = null;
 
     // 1. RENDER FUNCTION (Updates the screen)
@@ -81,26 +99,66 @@
     }
 
     function playDing() {
-        const source = document.getElementById('ding');
         stopDing();
 
-        const ding = new Audio(source.currentSrc || source.src);
-        ding.preload = 'auto';
-        ding.volume = source.volume;
-        activeDing = ding;
-
-        const playPromise = ding.play();
-        if (playPromise) {
-            playPromise
-                .then(() => {
-                    if (activeDing === ding) {
-                        dingStopTimer = setTimeout(stopDing, DING_CUTOFF_MS);
-                    }
-                })
-                .catch(stopDing);
-        } else {
-            dingStopTimer = setTimeout(stopDing, DING_CUTOFF_MS);
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) {
+            showSoundEnable();
+            console.error("AudioContext is not supported by this browser.");
+            return;
         }
+
+        if (audioContext === null) {
+            audioContext = new AudioContextClass();
+        }
+
+        const start = () => {
+            hideSoundEnable();
+
+            const now = audioContext.currentTime;
+            const gain = audioContext.createGain();
+            const lowTone = audioContext.createOscillator();
+            const highTone = audioContext.createOscillator();
+
+            lowTone.type = 'triangle';
+            highTone.type = 'sine';
+            lowTone.frequency.setValueAtTime(880, now);
+            highTone.frequency.setValueAtTime(1320, now);
+
+            gain.gain.setValueAtTime(0.0001, now);
+            gain.gain.exponentialRampToValueAtTime(0.7, now + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + DING_CUTOFF_SECONDS);
+
+            lowTone.connect(gain);
+            highTone.connect(gain);
+            gain.connect(audioContext.destination);
+
+            activeDingNodes = { lowTone, highTone, gain };
+            lowTone.start(now);
+            highTone.start(now);
+            lowTone.stop(now + DING_CUTOFF_SECONDS);
+            highTone.stop(now + DING_CUTOFF_SECONDS);
+            dingStopTimer = setTimeout(stopDing, DING_CUTOFF_MS);
+        };
+
+        if (audioContext.state === 'suspended') {
+            audioContext.resume()
+                .then(() => {
+                    if (audioContext.state !== 'running') {
+                        showSoundEnable();
+                        console.error("Ding playback is still blocked.");
+                        return;
+                    }
+                    start();
+                })
+                .catch((err) => {
+                    showSoundEnable();
+                    console.error("Ding playback blocked", err);
+                });
+            return;
+        }
+
+        start();
     }
 
     function stopDing() {
@@ -109,13 +167,29 @@
             dingStopTimer = null;
         }
 
-        if (activeDing !== null) {
-            activeDing.pause();
-            activeDing.removeAttribute('src');
-            activeDing.load();
-            activeDing = null;
+        if (activeDingNodes !== null) {
+            try {
+                activeDingNodes.lowTone.stop();
+                activeDingNodes.highTone.stop();
+            } catch (err) {}
+            activeDingNodes.lowTone.disconnect();
+            activeDingNodes.highTone.disconnect();
+            activeDingNodes.gain.disconnect();
+            activeDingNodes = null;
         }
     }
+
+    function showSoundEnable() {
+        document.getElementById('sound-enable').classList.add('visible');
+    }
+
+    function hideSoundEnable() {
+        document.getElementById('sound-enable').classList.remove('visible');
+    }
+
+    document.getElementById('sound-enable').addEventListener('click', () => {
+        playDing();
+    });
 
     // 2. VIEWER LOGIC: TV receives state updates from the Pi over SSE
     function applyState(data) {
