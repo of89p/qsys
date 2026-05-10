@@ -68,6 +68,8 @@
         mode: "FOOD",
         dingId: null,
     };
+    const DING_CUTOFF_MS = 750;
+    let dingStopTimer = null;
 
     // 1. RENDER FUNCTION (Updates the screen)
     function render() {
@@ -75,6 +77,22 @@
         const fList = document.getElementById('food-list');
         dList.innerHTML = state.drinks.map((n, i) => `<div class="${i===0 ? 'num-new text-ready' : 'num-past'}">${n}</div>`).join('');
         fList.innerHTML = state.food.map((n, i) => `<div class="${i===0 ? 'num-new text-ready' : 'num-past'}">${n}</div>`).join('');
+    }
+
+    function playDing() {
+        const ding = document.getElementById('ding');
+        if (dingStopTimer !== null) {
+            clearTimeout(dingStopTimer);
+        }
+
+        ding.pause();
+        ding.currentTime = 0;
+        ding.play().catch(() => {});
+        dingStopTimer = setTimeout(() => {
+            ding.pause();
+            ding.currentTime = 0;
+            dingStopTimer = null;
+        }, DING_CUTOFF_MS);
     }
 
     // 2. VIEWER LOGIC: TV asks the Pi for the latest numbers every 1 second
@@ -85,7 +103,7 @@
 
             const dingId = data.ding_id ?? 0;
             if (state.dingId !== null && dingId !== state.dingId) {
-                document.getElementById('ding').play().catch(() => {});
+                playDing();
             }
 
             state.drinks = data.drinks;
