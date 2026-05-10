@@ -58,7 +58,7 @@
     </main>
 
     <!-- Notification Sound -->
-    <audio id="ding" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
+    <audio id="ding" preload="auto" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
 
     <script>
     (() => {
@@ -69,6 +69,7 @@
         dingId: null,
     };
     const DING_CUTOFF_MS = 750;
+    let activeDing = null;
     let dingStopTimer = null;
 
     // 1. RENDER FUNCTION (Updates the screen)
@@ -80,19 +81,40 @@
     }
 
     function playDing() {
-        const ding = document.getElementById('ding');
+        const source = document.getElementById('ding');
+        stopDing();
+
+        const ding = new Audio(source.currentSrc || source.src);
+        ding.preload = 'auto';
+        ding.volume = source.volume;
+        activeDing = ding;
+
+        const playPromise = ding.play();
+        if (playPromise) {
+            playPromise
+                .then(() => {
+                    if (activeDing === ding) {
+                        dingStopTimer = setTimeout(stopDing, DING_CUTOFF_MS);
+                    }
+                })
+                .catch(stopDing);
+        } else {
+            dingStopTimer = setTimeout(stopDing, DING_CUTOFF_MS);
+        }
+    }
+
+    function stopDing() {
         if (dingStopTimer !== null) {
             clearTimeout(dingStopTimer);
+            dingStopTimer = null;
         }
 
-        ding.pause();
-        ding.currentTime = 0;
-        ding.play().catch(() => {});
-        dingStopTimer = setTimeout(() => {
-            ding.pause();
-            ding.currentTime = 0;
-            dingStopTimer = null;
-        }, DING_CUTOFF_MS);
+        if (activeDing !== null) {
+            activeDing.pause();
+            activeDing.removeAttribute('src');
+            activeDing.load();
+            activeDing = null;
+        }
     }
 
     // 2. VIEWER LOGIC: TV asks the Pi for the latest numbers every 1 second
