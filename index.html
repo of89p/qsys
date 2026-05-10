@@ -30,7 +30,7 @@
             right: 24px;
             bottom: 24px;
             z-index: 10;
-            display: none;
+            display: block;
             background: #ffffff;
             color: #000000;
             border: 0;
@@ -40,7 +40,7 @@
             font-weight: 800;
             cursor: pointer;
         }
-        .sound-enable.visible { display: block; }
+        .sound-enable.hidden { display: none; }
     </style>
 </head>
 <body>
@@ -89,6 +89,7 @@
     let audioContext = null;
     let activeDingNodes = null;
     let dingStopTimer = null;
+    let soundEnabled = false;
 
     // 1. RENDER FUNCTION (Updates the screen)
     function render() {
@@ -114,6 +115,7 @@
 
         const start = () => {
             hideSoundEnable();
+            soundEnabled = true;
 
             const now = audioContext.currentTime;
             const gain = audioContext.createGain();
@@ -180,11 +182,11 @@
     }
 
     function showSoundEnable() {
-        document.getElementById('sound-enable').classList.add('visible');
+        document.getElementById('sound-enable').classList.remove('hidden');
     }
 
     function hideSoundEnable() {
-        document.getElementById('sound-enable').classList.remove('visible');
+        document.getElementById('sound-enable').classList.add('hidden');
     }
 
     document.getElementById('sound-enable').addEventListener('click', () => {
@@ -195,7 +197,12 @@
     function applyState(data) {
         const dingId = data.ding_id ?? 0;
         if (state.dingId !== null && dingId !== state.dingId) {
-            playDing();
+            if (soundEnabled) {
+                playDing();
+            } else {
+                showSoundEnable();
+                console.error("Sound is not enabled yet.");
+            }
         }
 
         state.drinks = data.drinks;
