@@ -120,6 +120,7 @@ async def read_keypad(device_path, station_name):
     while True:
         device = None
         current_input = ""
+        invalid_input = False
 
         try:
             device = evdev.InputDevice(device_path)
@@ -155,7 +156,15 @@ async def read_keypad(device_path, station_name):
                 )
 
                 if key == 'ENTER':
-                    if current_input:
+                    if invalid_input:
+                        logger.info(
+                            "%s keypad discarded invalid input=%s; ready for a new entry",
+                            station_name,
+                            current_input,
+                        )
+                        current_input = ""
+                        invalid_input = False
+                    elif current_input:
                         if submit_number(station_name, current_input):
                             current_input = ""
                         else:
@@ -167,18 +176,34 @@ async def read_keypad(device_path, station_name):
                     else:
                         logger.info("%s keypad ignored ENTER with empty buffer", station_name)
                 elif key == 'BACKSPACE':
-                    current_input = current_input[:-1]
-                    logger.info("%s keypad buffer=%s", station_name, current_input or "-")
+                    if invalid_input:
+                        logger.info(
+                            "%s keypad ignored BACKSPACE because input is invalid "
+                            "until ENTER is pressed",
+                            station_name,
+                        )
+                    else:
+                        current_input = current_input[:-1]
+                        logger.info("%s keypad buffer=%s", station_name, current_input or "-")
                 elif key:
-                    if len(current_input) < MAX_DIGITS:
+                    if invalid_input:
+                        logger.info(
+                            "%s keypad ignored digit=%s because input is invalid "
+                            "until ENTER is pressed",
+                            station_name,
+                            key,
+                        )
+                    elif len(current_input) < MAX_DIGITS:
                         current_input += key
                         logger.info("%s keypad buffer=%s", station_name, current_input)
                     else:
+                        invalid_input = True
                         logger.info(
-                            "%s keypad ignored digit=%s because buffer is full (%s)",
+                            "%s keypad marked input invalid after digit=%s exceeded "
+                            "%s digits; press ENTER to reset",
                             station_name,
                             key,
-                            current_input,
+                            MAX_DIGITS,
                         )
         except PermissionError:
             logger.error(

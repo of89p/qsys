@@ -66,6 +66,7 @@
         drinks: [],
         food: [],
         mode: "FOOD",
+        dingId: null,
     };
 
     // 1. RENDER FUNCTION (Updates the screen)
@@ -81,16 +82,16 @@
         try {
             const response = await fetch('/api/state', { cache: 'no-store' });
             const data = await response.json();
-            
-            // Check if there is a new number to trigger the Ding sound
-            if (JSON.stringify(state.drinks) !== JSON.stringify(data.drinks) || 
-                JSON.stringify(state.food) !== JSON.stringify(data.food)) {
+
+            const dingId = data.ding_id ?? 0;
+            if (state.dingId !== null && dingId !== state.dingId) {
                 document.getElementById('ding').play().catch(() => {});
             }
 
             state.drinks = data.drinks;
             state.food = data.food;
             state.mode = data.mode;
+            state.dingId = dingId;
             render();
         } catch (err) { console.error("Waiting for server..."); }
     }, 1000);

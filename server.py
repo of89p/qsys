@@ -6,7 +6,8 @@ app = Flask(__name__)
 state = {
     "drinks": [],
     "food": [],
-    "mode": "FOOD"
+    "mode": "FOOD",
+    "ding_id": 0,
 }
 
 MAX_VISIBLE_ORDERS = 3
@@ -43,6 +44,7 @@ def queue_number():
     queue.insert(0, final_number)
     state[station] = queue[:MAX_VISIBLE_ORDERS]
     state["mode"] = station.upper()
+    state["ding_id"] += 1
 
     return jsonify({"status": "success", "state": state})
 
