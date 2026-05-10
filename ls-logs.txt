@@ -1,0 +1,7 @@
+this is the output from ls -l /dev/input/by-id
+
+
+total 0
+lrwxrwxrwx 1 root root 9 May 10 17:09 usb-Logitech_USB_Receiver-if02-event-kbd -> ../event3
+lrwxrwxrwx 1 root root 9 May 10 17:14 usb-Logitech_USB_Receiver-if02-event-mouse -> ../event2
+lrwxrwxrwx 1 root root 9 May 10 17:14 usb-Logitech_USB_Receiver-if02-mouse -> ../mouse0
