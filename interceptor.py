@@ -1,11 +1,19 @@
 import evdev
 import asyncio
+import logging
 import os
 import requests
 
 API_URL = os.getenv("QSYS_QUEUE_URL", "http://127.0.0.1:8080/api/queue")
+LOG_LEVEL = os.getenv("QSYS_LOG_LEVEL", "INFO").upper()
 RETRY_SECONDS = 5
 MAX_DIGITS = 3
+
+logging.basicConfig(
+    level=getattr(logging, LOG_LEVEL, logging.INFO),
+    format="%(asctime)s %(levelname)s %(message)s",
+)
+logger = logging.getLogger("qsys.interceptor")
 
 # Set these from the systemd service. For now, ls-logs.txt shows one attached
 # keyboard receiver, so the default assigns it to the food station.
@@ -42,6 +50,47 @@ KEY_MAP = {
     evdev.ecodes.KEY_KPENTER: 'ENTER',
 }
 
+def key_name(event_code):
+    name = evdev.ecodes.KEY.get(event_code, str(event_code))
+    if isinstance(name, (list, tuple)):
+        return "/".join(name)
+    return name
+
+def submit_number(station_name, number):
+    try:
+        response = requests.post(API_URL, json={
+            "station": station_name,
+            "number": number,
+        }, timeout=2)
+    except requests.RequestException as exc:
+        logger.error(
+            "%s keypad could not submit number=%s to %s: %s. "
+            "Start the server in another terminal with: .venv/bin/python server.py",
+            station_name,
+            number,
+            API_URL,
+            exc,
+        )
+        return False
+
+    if not response.ok:
+        logger.error(
+            "%s keypad submit rejected number=%s status_code=%s response=%s",
+            station_name,
+            number,
+            response.status_code,
+            response.text[:200],
+        )
+        return False
+
+    logger.info(
+        "%s keypad submitted number=%s status_code=%s",
+        station_name,
+        number,
+        response.status_code,
+    )
+    return True
+
 async def read_keypad(device_path, station_name):
     while True:
         device = None
@@ -49,7 +98,7 @@ async def read_keypad(device_path, station_name):
 
         try:
             device = evdev.InputDevice(device_path)
-            print(f"Reading {station_name} keypad from {device_path}", flush=True)
+            logger.info("Reading %s keypad from %s", station_name, device_path)
 
             # Grab the device so the inputs do not leak into the terminal or GUI.
             device.grab()
@@ -58,21 +107,61 @@ async def read_keypad(device_path, station_name):
                 if event.type != evdev.ecodes.EV_KEY or event.value != 1:
                     continue
 
+                event_name = key_name(event.code)
                 key = KEY_MAP.get(event.code)
+                if key is None:
+                    logger.info(
+                        "%s keypad ignored unmapped key code=%s name=%s",
+                        station_name,
+                        event.code,
+                        event_name,
+                    )
+                    continue
+
+                logger.info(
+                    "%s keypad intercepted key=%s code=%s name=%s buffer=%s",
+                    station_name,
+                    key,
+                    event.code,
+                    event_name,
+                    current_input or "-",
+                )
+
                 if key == 'ENTER':
                     if current_input:
-                        requests.post(API_URL, json={
-                            "station": station_name,
-                            "number": current_input
-                        }, timeout=2)
-                        current_input = ""
+                        if submit_number(station_name, current_input):
+                            current_input = ""
+                        else:
+                            logger.info(
+                                "%s keypad buffer retained=%s",
+                                station_name,
+                                current_input,
+                            )
+                    else:
+                        logger.info("%s keypad ignored ENTER with empty buffer", station_name)
                 elif key == 'BACKSPACE':
                     current_input = current_input[:-1]
+                    logger.info("%s keypad buffer=%s", station_name, current_input or "-")
                 elif key:
                     if len(current_input) < MAX_DIGITS:
                         current_input += key
-        except Exception as e:
-            print(f"Error reading {station_name} keypad at {device_path}: {e}", flush=True)
+                        logger.info("%s keypad buffer=%s", station_name, current_input)
+                    else:
+                        logger.info(
+                            "%s keypad ignored digit=%s because buffer is full (%s)",
+                            station_name,
+                            key,
+                            current_input,
+                        )
+        except PermissionError:
+            logger.error(
+                "Permission denied reading %s keypad at %s. For a manual test, run "
+                "the interceptor with sudo or add this user to the input group.",
+                station_name,
+                device_path,
+            )
+        except Exception:
+            logger.exception("Error reading %s keypad at %s", station_name, device_path)
         finally:
             if device is not None:
                 try:
@@ -85,6 +174,7 @@ async def read_keypad(device_path, station_name):
 
 async def main():
     keypads = []
+    logger.info("Queue endpoint is %s", API_URL)
 
     if DRINKS_DEVICE_PATH:
         keypads.append(read_keypad(DRINKS_DEVICE_PATH, "drinks"))
@@ -97,4 +187,7 @@ async def main():
     await asyncio.gather(*keypads)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("Interceptor stopped")

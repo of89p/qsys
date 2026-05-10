@@ -39,7 +39,7 @@ pip install -r requirements.txt
 
 ## Run Manually
 
-Start the web server:
+Start the web server in one terminal and keep it running:
 
 ```bash
 .venv/bin/python server.py
@@ -88,11 +88,20 @@ Use the `*-event-kbd` path for each keypad. Example:
 /dev/input/by-id/usb-Logitech_USB_Receiver-if02-event-kbd
 ```
 
-Run the interceptor with one keypad:
+Run the interceptor with one keypad in a second terminal:
 
 ```bash
 FOOD_DEVICE_PATH=/dev/input/by-id/usb-Logitech_USB_Receiver-if02-event-kbd \
 .venv/bin/python interceptor.py
+```
+
+If you have not added your user to the `input` group, run the same manual test
+with `sudo`:
+
+```bash
+sudo env FOOD_DEVICE_PATH=/dev/input/by-id/usb-Logitech_USB_Receiver-if02-event-kbd \
+  QSYS_QUEUE_URL=http://127.0.0.1:8080/api/queue \
+  .venv/bin/python interceptor.py
 ```
 
 Run it with separate food and drinks keypads:
@@ -144,12 +153,18 @@ systemctl status qsys-server.service
 systemctl status qsys-interceptor.service
 ```
 
-View logs:
+View logs for systemd services:
 
 ```bash
 journalctl -u qsys-server.service -f
 journalctl -u qsys-interceptor.service -f
 ```
+
+When running manually, logs are printed directly in the terminal running
+`server.py` or `interceptor.py`.
+
+The interceptor logs keypad presses, unmapped keys, buffer changes, and queue
+submissions.
 
 Restart after making changes:
 
@@ -165,6 +180,7 @@ The interceptor supports these environment variables:
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `QSYS_QUEUE_URL` | `http://127.0.0.1:8080/api/queue` | Server endpoint that receives keypad submissions. |
+| `QSYS_LOG_LEVEL` | `INFO` | Interceptor logging level. |
 | `FOOD_DEVICE_PATH` | `/dev/input/by-id/usb-Logitech_USB_Receiver-if02-event-kbd` | Input device for the Food station. |
 | `DRINKS_DEVICE_PATH` | empty | Input device for the Drinks and Snacks station. |
 
