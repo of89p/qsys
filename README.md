@@ -71,13 +71,8 @@ curl -X POST http://127.0.0.1:8080/api/queue \
   -d '{"station":"food","number":"12"}'
 ```
 
-The display also accepts direct keyboard input in the browser:
-
-- Press `f` to select Food.
-- Press `d` to select Drinks and Snacks.
-- Type up to 3 digits.
-- Press `Enter` to add the order number.
-- Press `Backspace` to edit the current input.
+The display page is read-only. Order numbers should be submitted through
+`/api/queue`, either from the USB keypad interceptor or from a manual API call.
 
 ## Set Up USB Keypads
 

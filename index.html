@@ -65,7 +65,6 @@
     <script>
     let drinks = [];
     let food = [];
-    let buffer = "";
     let mode = "FOOD";
 
     // 1. RENDER FUNCTION (Updates the screen)
@@ -101,40 +100,7 @@
         } catch (err) { console.error("Waiting for server..."); }
     }, 1000);
 
-    // 3. REMOTE CONTROL LOGIC: Pi sends keystrokes to the Server
-    window.addEventListener('keydown', async (e) => {
-        const key = e.key.toLowerCase();
-        let updated = false;
-
-        if (key === 'd') { mode = "DRINKS"; updated = true; }
-        if (key === 'f') { mode = "FOOD"; updated = true; }
-
-        if (/[0-9]/.test(key) && buffer.length < 3) buffer += key;
-        if (key === 'backspace') buffer = buffer.slice(0, -1);
-
-        if (key === 'enter' && buffer.length > 0) {
-            const finalNum = buffer.padStart(3, '0');
-            let targetArr = mode === "DRINKS" ? drinks : food;
-
-            targetArr = targetArr.filter(n => n !== finalNum); // Bump logic
-            targetArr.unshift(finalNum);
-            if (targetArr.length > 4) targetArr.pop(); // Max 4
-
-            if (mode === "DRINKS") drinks = targetArr; else food = targetArr;
-            buffer = "";
-            updated = true;
-        }
-
-        // Send the new numbers to the Python server
-        if (updated) {
-            await fetch('/api/update', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ drinks, food, mode })
-            });
-            render();
-        }
-    });
-</script>
+    render();
+    </script>
 </body>
 </html>

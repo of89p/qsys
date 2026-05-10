@@ -21,16 +21,6 @@ def index():
 def get_state():
     return jsonify(state)
 
-# The Pi will send numbers to this URL when you type
-@app.route('/api/update', methods=['POST'])
-def update_state():
-    global state
-    data = request.json
-    state['drinks'] = data.get('drinks', state['drinks'])
-    state['food'] = data.get('food', state['food'])
-    state['mode'] = data.get('mode', state['mode'])
-    return jsonify({"status": "success"})
-
 @app.route('/api/queue', methods=['POST'])
 def queue_number():
     data = request.json or {}
