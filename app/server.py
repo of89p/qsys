@@ -2,6 +2,7 @@ import json
 import threading
 from pathlib import Path
 
+from dotenv import load_dotenv
 from flask import (
     Flask,
     Response,
@@ -11,7 +12,6 @@ from flask import (
     send_from_directory,
     stream_with_context,
 )
-from dotenv import load_dotenv
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 APP_DIR = Path(__file__).resolve().parent
@@ -31,6 +31,7 @@ state_changed = threading.Condition()
 
 MAX_VISIBLE_ORDERS = 3
 
+
 def state_snapshot():
     return {
         "drinks": list(state["drinks"]),
@@ -39,25 +40,29 @@ def state_snapshot():
         "ding_id": state["ding_id"],
     }
 
+
 def sse_event(event_name, data):
     return f"event: {event_name}\ndata: {json.dumps(data)}\n\n"
 
+
 # Serve the HTML page to the TV
-@app.route('/')
+@app.route("/")
 def index():
-    response = make_response(send_from_directory(APP_DIR, 'index.html'))
-    response.headers['Cache-Control'] = 'no-store, max-age=0'
+    response = make_response(send_from_directory(APP_DIR, "index.html"))
+    response.headers["Cache-Control"] = "no-store, max-age=0"
     return response
 
+
 # State snapshot endpoint, useful for manual checks.
-@app.route('/api/state', methods=['GET'])
+@app.route("/api/state", methods=["GET"])
 def get_state():
     with state_changed:
         response = jsonify(state_snapshot())
-    response.headers['Cache-Control'] = 'no-store, max-age=0'
+    response.headers["Cache-Control"] = "no-store, max-age=0"
     return response
 
-@app.route('/api/events', methods=['GET'])
+
+@app.route("/api/events", methods=["GET"])
 def stream_state():
     @stream_with_context
     def event_stream():
@@ -82,24 +87,31 @@ def stream_state():
             last_ding_id = snapshot["ding_id"]
             yield sse_event("state", snapshot)
 
-    response = Response(event_stream(), mimetype='text/event-stream')
-    response.headers['Cache-Control'] = 'no-cache'
-    response.headers['Connection'] = 'keep-alive'
-    response.headers['X-Accel-Buffering'] = 'no'
+    response = Response(event_stream(), mimetype="text/event-stream")
+    response.headers["Cache-Control"] = "no-cache"
+    response.headers["Connection"] = "keep-alive"
+    response.headers["X-Accel-Buffering"] = "no"
     return response
 
-@app.route('/api/queue', methods=['POST'])
+
+@app.route("/api/queue", methods=["POST"])
 def queue_number():
     data = request.json or {}
-    station = str(data.get('station', '')).lower()
-    number = str(data.get('number', '')).strip()
+    station = str(data.get("station", "")).lower()
+    number = str(data.get("number", "")).strip()
 
     if station not in ("drinks", "food"):
-        return jsonify({"status": "error", "message": "station must be drinks or food"}), 400
+        return jsonify(
+            {"status": "error", "message": "station must be drinks or food"}
+        ), 400
     if not number.isdigit():
-        return jsonify({"status": "error", "message": "number must contain digits only"}), 400
+        return jsonify(
+            {"status": "error", "message": "number must contain digits only"}
+        ), 400
     if len(number) > 3:
-        return jsonify({"status": "error", "message": "number must be at most 3 digits"}), 400
+        return jsonify(
+            {"status": "error", "message": "number must be at most 3 digits"}
+        ), 400
 
     with state_changed:
         final_number = number.zfill(3)
@@ -113,6 +125,7 @@ def queue_number():
 
     return jsonify({"status": "success", "state": snapshot})
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     # Runs the server on your local Wi-Fi network
-    app.run(host='0.0.0.0', port=8080, threaded=True)
+    app.run(host="0.0.0.0", port=8080, threaded=True)

@@ -13,7 +13,10 @@ load_dotenv(ROOT_DIR / ".env")
 API_URL = os.getenv("QSYS_QUEUE_URL", "http://127.0.0.1:8080/api/queue")
 LOG_LEVEL = os.getenv("QSYS_LOG_LEVEL", "INFO").upper()
 ACCEPT_ROW_DIGITS = os.getenv("QSYS_ACCEPT_ROW_DIGITS", "").lower() in {
-    "1", "true", "yes", "on"
+    "1",
+    "true",
+    "yes",
+    "on",
 }
 RETRY_SECONDS = 5
 MAX_DIGITS = 3
@@ -31,42 +34,44 @@ FOOD_DEVICE_PATH = os.getenv("FOOD_DEVICE_PATH", "").strip()
 # Keypad digit keycodes. Normal row digits are ignored by default so a regular
 # keyboard can keep working while this process observes the input device.
 KEYPAD_KEY_MAP = {
-    evdev.ecodes.KEY_KP0: '0',
-    evdev.ecodes.KEY_KP1: '1',
-    evdev.ecodes.KEY_KP2: '2',
-    evdev.ecodes.KEY_KP3: '3',
-    evdev.ecodes.KEY_KP4: '4',
-    evdev.ecodes.KEY_KP5: '5',
-    evdev.ecodes.KEY_KP6: '6',
-    evdev.ecodes.KEY_KP7: '7',
-    evdev.ecodes.KEY_KP8: '8',
-    evdev.ecodes.KEY_KP9: '9',
-    evdev.ecodes.KEY_KPENTER: 'ENTER',
+    evdev.ecodes.KEY_KP0: "0",
+    evdev.ecodes.KEY_KP1: "1",
+    evdev.ecodes.KEY_KP2: "2",
+    evdev.ecodes.KEY_KP3: "3",
+    evdev.ecodes.KEY_KP4: "4",
+    evdev.ecodes.KEY_KP5: "5",
+    evdev.ecodes.KEY_KP6: "6",
+    evdev.ecodes.KEY_KP7: "7",
+    evdev.ecodes.KEY_KP8: "8",
+    evdev.ecodes.KEY_KP9: "9",
+    evdev.ecodes.KEY_KPENTER: "ENTER",
 }
 
 ROW_DIGIT_KEY_MAP = {
-    evdev.ecodes.KEY_0: '0',
-    evdev.ecodes.KEY_1: '1',
-    evdev.ecodes.KEY_2: '2',
-    evdev.ecodes.KEY_3: '3',
-    evdev.ecodes.KEY_4: '4',
-    evdev.ecodes.KEY_5: '5',
-    evdev.ecodes.KEY_6: '6',
-    evdev.ecodes.KEY_7: '7',
-    evdev.ecodes.KEY_8: '8',
-    evdev.ecodes.KEY_9: '9',
+    evdev.ecodes.KEY_0: "0",
+    evdev.ecodes.KEY_1: "1",
+    evdev.ecodes.KEY_2: "2",
+    evdev.ecodes.KEY_3: "3",
+    evdev.ecodes.KEY_4: "4",
+    evdev.ecodes.KEY_5: "5",
+    evdev.ecodes.KEY_6: "6",
+    evdev.ecodes.KEY_7: "7",
+    evdev.ecodes.KEY_8: "8",
+    evdev.ecodes.KEY_9: "9",
 }
 
 BUFFER_CONTROL_KEY_MAP = {
-    evdev.ecodes.KEY_ENTER: 'ENTER',
-    evdev.ecodes.KEY_BACKSPACE: 'BACKSPACE',
+    evdev.ecodes.KEY_ENTER: "ENTER",
+    evdev.ecodes.KEY_BACKSPACE: "BACKSPACE",
 }
+
 
 def key_name(event_code):
     name = evdev.ecodes.KEY.get(event_code, str(event_code))
     if isinstance(name, (list, tuple)):
         return "/".join(name)
     return name
+
 
 def mapped_key_for_event(event_code, current_input):
     key = KEYPAD_KEY_MAP.get(event_code)
@@ -83,12 +88,17 @@ def mapped_key_for_event(event_code, current_input):
 
     return None
 
+
 def submit_number(station_name, number):
     try:
-        response = requests.post(API_URL, json={
-            "station": station_name,
-            "number": number,
-        }, timeout=2)
+        response = requests.post(
+            API_URL,
+            json={
+                "station": station_name,
+                "number": number,
+            },
+            timeout=2,
+        )
     except requests.RequestException as exc:
         logger.error(
             "%s keypad could not submit number=%s to %s: %s. "
@@ -117,6 +127,7 @@ def submit_number(station_name, number):
         response.status_code,
     )
     return True
+
 
 async def read_keypad(device_path, station_name):
     while True:
@@ -157,7 +168,7 @@ async def read_keypad(device_path, station_name):
                     current_input or "-",
                 )
 
-                if key == 'ENTER':
+                if key == "ENTER":
                     if invalid_input:
                         logger.debug(
                             "%s keypad discarded invalid input=%s; ready for a new entry",
@@ -176,8 +187,10 @@ async def read_keypad(device_path, station_name):
                                 current_input,
                             )
                     else:
-                        logger.debug("%s keypad ignored ENTER with empty buffer", station_name)
-                elif key == 'BACKSPACE':
+                        logger.debug(
+                            "%s keypad ignored ENTER with empty buffer", station_name
+                        )
+                elif key == "BACKSPACE":
                     if invalid_input:
                         logger.debug(
                             "%s keypad ignored BACKSPACE because input is invalid "
@@ -186,7 +199,9 @@ async def read_keypad(device_path, station_name):
                         )
                     else:
                         current_input = current_input[:-1]
-                        logger.debug("%s keypad buffer=%s", station_name, current_input or "-")
+                        logger.debug(
+                            "%s keypad buffer=%s", station_name, current_input or "-"
+                        )
                 elif key:
                     if invalid_input:
                         logger.debug(
@@ -222,6 +237,7 @@ async def read_keypad(device_path, station_name):
 
         await asyncio.sleep(RETRY_SECONDS)
 
+
 async def main():
     keypads = []
     logger.info("Queue endpoint is %s", API_URL)
@@ -235,6 +251,7 @@ async def main():
         raise RuntimeError("Set FOOD_DEVICE_PATH and/or DRINKS_DEVICE_PATH")
 
     await asyncio.gather(*keypads)
+
 
 if __name__ == "__main__":
     try:
