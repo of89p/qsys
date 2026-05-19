@@ -3,6 +3,9 @@ import asyncio
 import logging
 import os
 import requests
+from dotenv import load_dotenv
+
+load_dotenv()
 
 API_URL = os.getenv("QSYS_QUEUE_URL", "http://127.0.0.1:8080/api/queue")
 LOG_LEVEL = os.getenv("QSYS_LOG_LEVEL", "INFO").upper()
@@ -18,13 +21,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger("qsys.interceptor")
 
-# Set these from the systemd service. For now, ls-logs.txt shows one attached
-# keyboard receiver, so the default assigns it to the food station.
+# Set these from .env. Generate that file with scripts/update_env_from_ls.py.
 DRINKS_DEVICE_PATH = os.getenv("DRINKS_DEVICE_PATH", "").strip()
-FOOD_DEVICE_PATH = os.getenv(
-    "FOOD_DEVICE_PATH",
-    "/dev/input/by-id/usb-Logitech_USB_Receiver-if02-event-kbd"
-).strip()
+FOOD_DEVICE_PATH = os.getenv("FOOD_DEVICE_PATH", "").strip()
 
 # Keypad digit keycodes. Normal row digits are ignored by default so a regular
 # keyboard can keep working while this process observes the input device.
