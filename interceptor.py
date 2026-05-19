@@ -123,7 +123,7 @@ async def read_keypad(device_path, station_name):
 
         try:
             device = evdev.InputDevice(device_path)
-            logger.info(
+            logger.debug(
                 "Reading %s keypad from %s without exclusive grab; non-keypad "
                 "input will pass through to the OS",
                 station_name,
@@ -145,7 +145,7 @@ async def read_keypad(device_path, station_name):
                     )
                     continue
 
-                logger.info(
+                logger.debug(
                     "%s keypad intercepted key=%s code=%s name=%s buffer=%s",
                     station_name,
                     key,
@@ -156,7 +156,7 @@ async def read_keypad(device_path, station_name):
 
                 if key == 'ENTER':
                     if invalid_input:
-                        logger.info(
+                        logger.debug(
                             "%s keypad discarded invalid input=%s; ready for a new entry",
                             station_name,
                             current_input,
@@ -167,26 +167,26 @@ async def read_keypad(device_path, station_name):
                         if submit_number(station_name, current_input):
                             current_input = ""
                         else:
-                            logger.info(
+                            logger.debug(
                                 "%s keypad buffer retained=%s",
                                 station_name,
                                 current_input,
                             )
                     else:
-                        logger.info("%s keypad ignored ENTER with empty buffer", station_name)
+                        logger.debug("%s keypad ignored ENTER with empty buffer", station_name)
                 elif key == 'BACKSPACE':
                     if invalid_input:
-                        logger.info(
+                        logger.debug(
                             "%s keypad ignored BACKSPACE because input is invalid "
                             "until ENTER is pressed",
                             station_name,
                         )
                     else:
                         current_input = current_input[:-1]
-                        logger.info("%s keypad buffer=%s", station_name, current_input or "-")
+                        logger.debug("%s keypad buffer=%s", station_name, current_input or "-")
                 elif key:
                     if invalid_input:
-                        logger.info(
+                        logger.debug(
                             "%s keypad ignored digit=%s because input is invalid "
                             "until ENTER is pressed",
                             station_name,
@@ -194,10 +194,10 @@ async def read_keypad(device_path, station_name):
                         )
                     elif len(current_input) < MAX_DIGITS:
                         current_input += key
-                        logger.info("%s keypad buffer=%s", station_name, current_input)
+                        logger.debug("%s keypad buffer=%s", station_name, current_input)
                     else:
                         invalid_input = True
-                        logger.info(
+                        logger.debug(
                             "%s keypad marked input invalid after digit=%s exceeded "
                             "%s digits; press ENTER to reset",
                             station_name,
