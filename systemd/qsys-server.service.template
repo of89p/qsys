@@ -5,10 +5,10 @@ After=network-online.target
 
 [Service]
 Type=simple
-User=yy
-WorkingDirectory=/home/yy/nus/qsys
+User={{QSYS_USER}}
+WorkingDirectory={{QSYS_ROOT}}
 Environment=PYTHONUNBUFFERED=1
-ExecStart=/home/yy/nus/qsys/.venv/bin/python /home/yy/nus/qsys/server.py
+ExecStart={{QSYS_PYTHON}} {{QSYS_ROOT}}/server.py
 Restart=always
 RestartSec=3
 

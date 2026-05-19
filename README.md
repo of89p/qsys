@@ -17,10 +17,12 @@ http://<pi-ip-address>:8080/
 
 ## Install
 
+For Raspberry Pi deployment, use [SETUP.md](SETUP.md).
+
 From the project directory:
 
 ```bash
-cd /home/yy/nus/qsys
+cd /path/to/qsys
 ```
 
 If you use `uv`:
@@ -84,6 +86,22 @@ List connected input devices:
 ls -l /dev/input/by-id/
 ```
 
+Generate or update `.env` from the detected keyboard device paths:
+
+```bash
+python3 scripts/update_env_from_ls.py
+```
+
+If you saved the `ls -l /dev/input/by-id/` output to a file, pass it in:
+
+```bash
+python3 scripts/update_env_from_ls.py --from-file devlogs/ls-logs.txt
+```
+
+The first `*-event-kbd` device is written as `FOOD_DEVICE_PATH`; the second is
+written as `DRINKS_DEVICE_PATH`. Add `--swap` if those two assignments should be
+reversed.
+
 Use the `*-event-kbd` path for each keypad. Example:
 
 ```text
@@ -93,7 +111,9 @@ Use the `*-event-kbd` path for each keypad. Example:
 Run the interceptor with one keypad in a second terminal:
 
 ```bash
-FOOD_DEVICE_PATH=/dev/input/by-id/usb-Logitech_USB_Receiver-if02-event-kbd \
+set -a
+. ./.env
+set +a
 .venv/bin/python interceptor.py
 ```
 
@@ -130,26 +150,32 @@ Log out and back in after changing groups. For a quick manual test only, you can
 
 ## Install As System Services
 
-The service files are in `systemd/`:
-
-- `systemd/qsys-server.service`
-- `systemd/qsys-interceptor.service`
-
-Before installing them, edit both files if needed:
-
-- Set `User=` to the Linux user that owns this project.
-- Set `WorkingDirectory=` to this project directory.
-- Set `ExecStart=` to this project's `.venv/bin/python`.
-- Set `FOOD_DEVICE_PATH=` and, if used, `DRINKS_DEVICE_PATH=` in `qsys-interceptor.service`.
-
-Install and start the services:
+The service templates are in `systemd/`. Install them with the setup script from
+the project directory:
 
 ```bash
-sudo cp systemd/qsys-server.service /etc/systemd/system/
-sudo cp systemd/qsys-interceptor.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now qsys-server.service
-sudo systemctl enable --now qsys-interceptor.service
+sudo python3 scripts/install_systemd_services.py
+```
+
+The script detects this checkout path, the service user, and the Python
+executable, then renders real `qsys-server.service` and
+`qsys-interceptor.service` files into `/etc/systemd/system/`. It also updates
+`.env` from `/dev/input/by-id`, adds the service user to the `input` group, runs
+`systemctl daemon-reload`, enables both services, and restarts them.
+
+For an image build or a nonstandard install, pass explicit values:
+
+```bash
+sudo python3 scripts/install_systemd_services.py \
+  --user pi \
+  --root /home/pi/qsys \
+  --python /home/pi/qsys/.venv/bin/python
+```
+
+Preview without changing the system:
+
+```bash
+python3 scripts/install_systemd_services.py --dry-run
 ```
 
 Check status:
@@ -188,7 +214,7 @@ The interceptor supports these environment variables:
 | `QSYS_QUEUE_URL` | `http://127.0.0.1:8080/api/queue` | Server endpoint that receives keypad submissions. |
 | `QSYS_LOG_LEVEL` | `INFO` | Interceptor logging level. |
 | `QSYS_ACCEPT_ROW_DIGITS` | empty | Set to `1` only if your keypad sends normal number-row keycodes instead of keypad keycodes. |
-| `FOOD_DEVICE_PATH` | `/dev/input/by-id/usb-Logitech_USB_Receiver-if02-event-kbd` | Input device for the Food station. |
+| `FOOD_DEVICE_PATH` | empty | Input device for the Food station. |
 | `DRINKS_DEVICE_PATH` | empty | Input device for the Drinks and Snacks station. |
 
 The server listens on `0.0.0.0:8080`.
