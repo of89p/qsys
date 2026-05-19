@@ -218,4 +218,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
 yy_gh_access_token
+devlogs/
+
