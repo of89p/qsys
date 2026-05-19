@@ -1,5 +1,6 @@
 import json
 import threading
+from pathlib import Path
 
 from flask import (
     Flask,
@@ -10,6 +11,12 @@ from flask import (
     send_from_directory,
     stream_with_context,
 )
+from dotenv import load_dotenv
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+APP_DIR = Path(__file__).resolve().parent
+
+load_dotenv(ROOT_DIR / ".env")
 
 app = Flask(__name__)
 
@@ -38,7 +45,7 @@ def sse_event(event_name, data):
 # Serve the HTML page to the TV
 @app.route('/')
 def index():
-    response = make_response(send_from_directory('.', 'index.html'))
+    response = make_response(send_from_directory(APP_DIR, 'index.html'))
     response.headers['Cache-Control'] = 'no-store, max-age=0'
     return response
 

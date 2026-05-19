@@ -228,7 +228,7 @@ sudo systemctl restart qsys-interceptor.service
 ```
 
 If port `8080` is already in use, stop the other process or change the port in
-`server.py`.
+`app/server.py`.
 
 ## Uninstall Services
 

@@ -1,11 +1,14 @@
-import evdev
 import asyncio
 import logging
 import os
+from pathlib import Path
+
+import evdev
 import requests
 from dotenv import load_dotenv
 
-load_dotenv()
+ROOT_DIR = Path(__file__).resolve().parents[1]
+load_dotenv(ROOT_DIR / ".env")
 
 API_URL = os.getenv("QSYS_QUEUE_URL", "http://127.0.0.1:8080/api/queue")
 LOG_LEVEL = os.getenv("QSYS_LOG_LEVEL", "INFO").upper()
@@ -89,7 +92,7 @@ def submit_number(station_name, number):
     except requests.RequestException as exc:
         logger.error(
             "%s keypad could not submit number=%s to %s: %s. "
-            "Start the server in another terminal with: .venv/bin/python server.py",
+            "Start the server in another terminal with: .venv/bin/python app/server.py",
             station_name,
             number,
             API_URL,

@@ -44,7 +44,7 @@ pip install -r requirements.txt
 Start the web server in one terminal and keep it running:
 
 ```bash
-.venv/bin/python server.py
+.venv/bin/python app/server.py
 ```
 
 Open the display from the same machine:
@@ -114,7 +114,7 @@ Run the interceptor with one keypad in a second terminal:
 set -a
 . ./.env
 set +a
-.venv/bin/python interceptor.py
+.venv/bin/python app/interceptor.py
 ```
 
 If you have not added your user to the `input` group, run the same manual test
@@ -123,7 +123,7 @@ with `sudo`:
 ```bash
 sudo env FOOD_DEVICE_PATH=/dev/input/by-id/usb-Logitech_USB_Receiver-if02-event-kbd \
   QSYS_QUEUE_URL=http://127.0.0.1:8080/api/queue \
-  .venv/bin/python interceptor.py
+  .venv/bin/python app/interceptor.py
 ```
 
 Run it with separate food and drinks keypads:
@@ -131,7 +131,7 @@ Run it with separate food and drinks keypads:
 ```bash
 FOOD_DEVICE_PATH=/dev/input/by-id/<food-keypad-event-kbd> \
 DRINKS_DEVICE_PATH=/dev/input/by-id/<drinks-keypad-event-kbd> \
-.venv/bin/python interceptor.py
+.venv/bin/python app/interceptor.py
 ```
 
 The interceptor reads digits, accepts `Backspace`, and submits the number when `Enter` is pressed. Submitted numbers are padded to 3 digits on the display.
@@ -193,7 +193,7 @@ journalctl -u qsys-interceptor.service -f
 ```
 
 When running manually, logs are printed directly in the terminal running
-`server.py` or `interceptor.py`.
+`app/server.py` or `app/interceptor.py`.
 
 The interceptor logs keypad presses, unmapped keys, buffer changes, and queue
 submissions.
@@ -222,7 +222,7 @@ The server listens on `0.0.0.0:8080`.
 ## Troubleshooting
 
 - If the TV cannot load the page, confirm the server is running and open `http://<pi-ip-address>:8080/` from a browser on the same network.
-- If port `8080` is already in use, stop the other process or change the port in `server.py`.
+- If port `8080` is already in use, stop the other process or change the port in `app/server.py`.
 - If the interceptor prints a permission error, add the service user to the `input` group and restart the login session or the service.
 - If keypad input does nothing, re-run `ls -l /dev/input/by-id/` and confirm the service uses the correct `*-event-kbd` path.
 - Queue state is stored in memory, so restarting the server clears the display.

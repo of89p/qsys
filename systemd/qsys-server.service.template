@@ -8,7 +8,7 @@ Type=simple
 User={{QSYS_USER}}
 WorkingDirectory={{QSYS_ROOT}}
 Environment=PYTHONUNBUFFERED=1
-ExecStart={{QSYS_PYTHON}} {{QSYS_ROOT}}/server.py
+ExecStart={{QSYS_PYTHON}} {{QSYS_ROOT}}/app/server.py
 Restart=always
 RestartSec=3
 

@@ -10,7 +10,7 @@ SupplementaryGroups=input
 WorkingDirectory={{QSYS_ROOT}}
 Environment=PYTHONUNBUFFERED=1
 EnvironmentFile=-{{QSYS_ENV_FILE}}
-ExecStart={{QSYS_PYTHON}} {{QSYS_ROOT}}/interceptor.py
+ExecStart={{QSYS_PYTHON}} {{QSYS_ROOT}}/app/interceptor.py
 Restart=always
 RestartSec=3
 
