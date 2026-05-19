@@ -7,6 +7,7 @@ source code.
 
 - Raspberry Pi OS or another Linux system with systemd
 - Python 3.12 or newer
+- `curl` or `wget` for installing `uv`
 - Network access from the TV/browser to the Pi
 - One or two USB keyboard/keypad receivers
 - The QSys source code copied or cloned onto the Pi
@@ -26,9 +27,32 @@ git clone <repo-url> qsys
 cd qsys
 ```
 
-## 2. Install Python Dependencies
+## 2. Install uv
 
-Recommended if `uv` is available:
+Install `uv` with the official standalone installer from the
+[uv installation docs](https://docs.astral.sh/uv/getting-started/installation/):
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+If `curl` is not installed, use `wget`:
+
+```bash
+wget -qO- https://astral.sh/uv/install.sh | sh
+```
+
+The installer usually places `uv` in `~/.local/bin`. Start a new shell, or make
+it available in the current shell:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+uv --version
+```
+
+## 3. Install Python Dependencies
+
+Use `uv` from the project directory:
 
 ```bash
 uv sync
@@ -44,7 +68,7 @@ pip install -r requirements.txt
 
 The service installer prefers `.venv/bin/python` when it exists.
 
-## 3. Plug In Keypads
+## 4. Plug In Keypads
 
 Plug in the food keypad, and the drinks keypad if used. Check that Linux can see
 the input devices:
@@ -55,7 +79,7 @@ ls -l /dev/input/by-id/
 
 The useful entries are the ones ending in `-event-kbd`.
 
-## 4. Install Services
+## 5. Install Services
 
 Run the installer from the project directory:
 
@@ -95,7 +119,7 @@ Preview the generated service files without changing the system:
 python3 scripts/install_systemd_services.py --dry-run
 ```
 
-## 5. Check The Display
+## 6. Check The Display
 
 Find the Pi IP address:
 
@@ -109,7 +133,7 @@ Open this URL from the TV or another browser on the same network:
 http://<pi-ip-address>:8080/
 ```
 
-## 6. Test Without A Keypad
+## 7. Test Without A Keypad
 
 Submit a food queue number manually:
 
