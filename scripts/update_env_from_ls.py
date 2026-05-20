@@ -12,7 +12,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DEVICE_DIR = Path("/dev/input/by-path")
 EXCLUDED_DEVICE_PATHS = (
-    Path("/dev/input/by-id/usb-Logitech_USB_Receiver-if02-event-kbd"),
+    Path("/dev/input/by-id/usb-Keychron_Keychron_K6-event-kbd"),
 )
 
 DEFAULT_ENV_VALUES = {
@@ -261,7 +261,7 @@ def main() -> int:
     if not keyboard_paths:
         print(
             f"No usable *-event-kbd devices found. Run `ls -l {args.device_dir}/` "
-            "and confirm the keypad is connected. The Logitech dev keyboard is "
+            "and confirm the keypad is connected. The Keychron dev keyboard is "
             "excluded automatically.",
             file=sys.stderr,
         )

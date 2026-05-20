@@ -83,8 +83,9 @@ more useful than `/dev/input/by-id` when two keypads are the same brand.
 If you prefer the old brand/device-id paths, pass
 `--device-dir /dev/input/by-id` to `scripts/update_env_from_ls.py` or
 `scripts/install_systemd_services.py`.
-The setup scripts ignore `/dev/input/by-id/usb-Logitech_USB_Receiver-if02-event-kbd`
-because that receiver is reserved as the dev keyboard.
+The setup scripts ignore `/dev/input/by-id/usb-Keychron_Keychron_K6-event-kbd`
+because that keyboard is reserved as the dev keyboard. When scanning
+`/dev/input/by-path`, the matching by-path symlink is ignored too.
 
 ## 5. Install Services
 
@@ -165,7 +166,7 @@ By default, the first detected `*-event-kbd` device becomes `FOOD_DEVICE_PATH`
 and the second becomes `DRINKS_DEVICE_PATH`.
 The generated paths normally begin with `/dev/input/by-path/`. Keep each keypad
 plugged into the same USB port so those assignments stay stable.
-The Logitech dev keyboard is excluded automatically and will not be assigned to
+The Keychron dev keyboard is excluded automatically and will not be assigned to
 Food or Drinks.
 
 If the keypads are reversed, regenerate `.env` with `--swap` and restart the

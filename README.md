@@ -104,8 +104,9 @@ reversed.
 The default `/dev/input/by-path` paths are tied to USB ports, which works better
 than `/dev/input/by-id` when both keypads are the same brand. Keep each keypad in
 the same USB port after setup.
-The generator skips `/dev/input/by-id/usb-Logitech_USB_Receiver-if02-event-kbd`
-because that receiver is reserved as the dev keyboard.
+The generator skips `/dev/input/by-id/usb-Keychron_Keychron_K6-event-kbd`
+because that keyboard is reserved as the dev keyboard. When scanning
+`/dev/input/by-path`, the matching by-path symlink is ignored too.
 
 Use the `*-event-kbd` path for each keypad. Example:
 
