@@ -83,7 +83,7 @@ The display receives live updates from `/api/events` using server-sent events.
 List connected input devices:
 
 ```bash
-ls -l /dev/input/by-id/
+ls -l /dev/input/by-path/
 ```
 
 Generate or update `.env` from the detected keyboard device paths:
@@ -92,7 +92,7 @@ Generate or update `.env` from the detected keyboard device paths:
 python3 scripts/update_env_from_ls.py
 ```
 
-If you saved the `ls -l /dev/input/by-id/` output to a file, pass it in:
+If you saved the `ls -l /dev/input/by-path/` output to a file, pass it in:
 
 ```bash
 python3 scripts/update_env_from_ls.py --from-file devlogs/ls-logs.txt
@@ -101,11 +101,16 @@ python3 scripts/update_env_from_ls.py --from-file devlogs/ls-logs.txt
 The first `*-event-kbd` device is written as `FOOD_DEVICE_PATH`; the second is
 written as `DRINKS_DEVICE_PATH`. Add `--swap` if those two assignments should be
 reversed.
+The default `/dev/input/by-path` paths are tied to USB ports, which works better
+than `/dev/input/by-id` when both keypads are the same brand. Keep each keypad in
+the same USB port after setup.
+The generator skips `/dev/input/by-id/usb-Logitech_USB_Receiver-if02-event-kbd`
+because that receiver is reserved as the dev keyboard.
 
 Use the `*-event-kbd` path for each keypad. Example:
 
 ```text
-/dev/input/by-id/usb-Logitech_USB_Receiver-if02-event-kbd
+/dev/input/by-path/platform-xhci-hcd.0-usb-0:1.2:1.0-event-kbd
 ```
 
 Run the interceptor with one keypad in a second terminal:
@@ -121,7 +126,7 @@ If you have not added your user to the `input` group, run the same manual test
 with `sudo`:
 
 ```bash
-sudo env FOOD_DEVICE_PATH=/dev/input/by-id/usb-Logitech_USB_Receiver-if02-event-kbd \
+sudo env FOOD_DEVICE_PATH=/dev/input/by-path/<food-keypad-event-kbd> \
   QSYS_QUEUE_URL=http://127.0.0.1:8080/api/queue \
   .venv/bin/python app/interceptor.py
 ```
@@ -129,8 +134,8 @@ sudo env FOOD_DEVICE_PATH=/dev/input/by-id/usb-Logitech_USB_Receiver-if02-event-
 Run it with separate food and drinks keypads:
 
 ```bash
-FOOD_DEVICE_PATH=/dev/input/by-id/<food-keypad-event-kbd> \
-DRINKS_DEVICE_PATH=/dev/input/by-id/<drinks-keypad-event-kbd> \
+FOOD_DEVICE_PATH=/dev/input/by-path/<food-keypad-event-kbd> \
+DRINKS_DEVICE_PATH=/dev/input/by-path/<drinks-keypad-event-kbd> \
 .venv/bin/python app/interceptor.py
 ```
 
@@ -160,7 +165,7 @@ sudo python3 scripts/install_systemd_services.py
 The script detects this checkout path, the service user, and the Python
 executable, then renders real `qsys-server.service` and
 `qsys-interceptor.service` files into `/etc/systemd/system/`. It also updates
-`.env` from `/dev/input/by-id`, adds the service user to the `input` group, runs
+`.env` from `/dev/input/by-path`, adds the service user to the `input` group, runs
 `systemctl daemon-reload`, enables both services, and restarts them.
 
 For an image build or a nonstandard install, pass explicit values:
@@ -224,5 +229,5 @@ The server listens on `0.0.0.0:8080`.
 - If the TV cannot load the page, confirm the server is running and open `http://<pi-ip-address>:8080/` from a browser on the same network.
 - If port `8080` is already in use, stop the other process or change the port in `app/server.py`.
 - If the interceptor prints a permission error, add the service user to the `input` group and restart the login session or the service.
-- If keypad input does nothing, re-run `ls -l /dev/input/by-id/` and confirm the service uses the correct `*-event-kbd` path.
+- If keypad input does nothing, re-run `ls -l /dev/input/by-path/` and confirm the service uses the correct `*-event-kbd` path.
 - Queue state is stored in memory, so restarting the server clears the display.

@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
-"""Update .env keypad paths from `ls -l /dev/input/by-id/` output."""
+"""Update .env keypad paths from `ls -l /dev/input/by-path/` output."""
 
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_DEVICE_DIR = Path("/dev/input/by-id")
+DEFAULT_DEVICE_DIR = Path("/dev/input/by-path")
+EXCLUDED_DEVICE_PATHS = (
+    Path("/dev/input/by-id/usb-Logitech_USB_Receiver-if02-event-kbd"),
+)
 
 DEFAULT_ENV_VALUES = {
     "PYTHONUNBUFFERED": "1",
@@ -34,7 +38,7 @@ def parse_args() -> argparse.Namespace:
         "--device-dir",
         type=Path,
         default=DEFAULT_DEVICE_DIR,
-        help="Input device directory to list. Default: /dev/input/by-id",
+        help="Input device directory to list. Default: /dev/input/by-path",
     )
     parser.add_argument(
         "--env-file",
@@ -52,12 +56,12 @@ def parse_args() -> argparse.Namespace:
     source.add_argument(
         "--from-file",
         type=Path,
-        help="Read saved output from `ls -l /dev/input/by-id/` instead of running ls.",
+        help="Read saved ls output instead of running ls.",
     )
     source.add_argument(
         "--stdin",
         action="store_true",
-        help="Read `ls -l /dev/input/by-id/` output from standard input.",
+        help="Read ls output from standard input.",
     )
     parser.add_argument(
         "--swap",
@@ -91,14 +95,65 @@ def read_ls_output(args: argparse.Namespace) -> str:
     return result.stdout
 
 
+def resolved_path(path: Path) -> Path | None:
+    try:
+        return path.resolve()
+    except OSError:
+        return None
+
+
+def symlink_target(path: Path) -> str | None:
+    try:
+        return os.readlink(path)
+    except OSError:
+        return None
+
+
+def excluded_device_keys() -> set[str]:
+    keys: set[str] = set()
+
+    for excluded_path in EXCLUDED_DEVICE_PATHS:
+        keys.add(str(excluded_path))
+        keys.add(excluded_path.name)
+
+        target = symlink_target(excluded_path)
+        if target:
+            keys.add(target)
+
+        resolved = resolved_path(excluded_path)
+        if resolved:
+            keys.add(str(resolved))
+
+    return keys
+
+
+def is_excluded_keyboard(
+    link_path: Path,
+    link_name: str,
+    link_target: str,
+    excluded_keys: set[str],
+) -> bool:
+    if str(link_path) in excluded_keys or link_name in excluded_keys:
+        return True
+
+    if link_target in excluded_keys:
+        return True
+
+    resolved = resolved_path(link_path)
+    return resolved is not None and str(resolved) in excluded_keys
+
+
 def parse_keyboard_paths(ls_output: str, device_dir: Path) -> list[str]:
     paths: list[str] = []
+    excluded_keys = excluded_device_keys()
 
     for raw_line in ls_output.splitlines():
         if " -> " not in raw_line:
             continue
 
-        before_arrow = raw_line.split(" -> ", 1)[0].strip()
+        before_arrow, link_target = raw_line.split(" -> ", 1)
+        before_arrow = before_arrow.strip()
+        link_target = link_target.strip()
         if not before_arrow:
             continue
 
@@ -109,6 +164,9 @@ def parse_keyboard_paths(ls_output: str, device_dir: Path) -> list[str]:
         link_path = Path(link_name)
         if not link_path.is_absolute():
             link_path = device_dir / link_path
+
+        if is_excluded_keyboard(link_path, link_name, link_target, excluded_keys):
+            continue
 
         path = str(link_path)
         if path not in paths:
@@ -202,8 +260,9 @@ def main() -> int:
 
     if not keyboard_paths:
         print(
-            "No *-event-kbd devices found. Run `ls -l /dev/input/by-id/` "
-            "and confirm the keypad is connected.",
+            f"No usable *-event-kbd devices found. Run `ls -l {args.device_dir}/` "
+            "and confirm the keypad is connected. The Logitech dev keyboard is "
+            "excluded automatically.",
             file=sys.stderr,
         )
         return 1

@@ -74,10 +74,17 @@ Plug in the food keypad, and the drinks keypad if used. Check that Linux can see
 the input devices:
 
 ```bash
-ls -l /dev/input/by-id/
+ls -l /dev/input/by-path/
 ```
 
 The useful entries are the ones ending in `-event-kbd`.
+`/dev/input/by-path` is used because it identifies the USB port path, which is
+more useful than `/dev/input/by-id` when two keypads are the same brand.
+If you prefer the old brand/device-id paths, pass
+`--device-dir /dev/input/by-id` to `scripts/update_env_from_ls.py` or
+`scripts/install_systemd_services.py`.
+The setup scripts ignore `/dev/input/by-id/usb-Logitech_USB_Receiver-if02-event-kbd`
+because that receiver is reserved as the dev keyboard.
 
 ## 5. Install Services
 
@@ -92,7 +99,7 @@ The installer:
 - Detects this checkout path.
 - Detects the Linux user that should run the services.
 - Uses `.venv/bin/python` when available.
-- Generates `.env` from `/dev/input/by-id`.
+- Generates `.env` from `/dev/input/by-path`.
 - Renders and installs the systemd services.
 - Adds the service user to the `input` group.
 - Enables and restarts both services.
@@ -150,12 +157,16 @@ The display should show `012`.
 The generated `.env` stores keypad paths:
 
 ```env
-FOOD_DEVICE_PATH=/dev/input/by-id/<food-keypad-event-kbd>
-DRINKS_DEVICE_PATH=/dev/input/by-id/<drinks-keypad-event-kbd>
+FOOD_DEVICE_PATH=/dev/input/by-path/<food-keypad-event-kbd>
+DRINKS_DEVICE_PATH=/dev/input/by-path/<drinks-keypad-event-kbd>
 ```
 
 By default, the first detected `*-event-kbd` device becomes `FOOD_DEVICE_PATH`
 and the second becomes `DRINKS_DEVICE_PATH`.
+The generated paths normally begin with `/dev/input/by-path/`. Keep each keypad
+plugged into the same USB port so those assignments stay stable.
+The Logitech dev keyboard is excluded automatically and will not be assigned to
+Food or Drinks.
 
 If the keypads are reversed, regenerate `.env` with `--swap` and restart the
 interceptor:
@@ -233,7 +244,7 @@ Then confirm `.env` points at current keyboard devices:
 
 ```bash
 cat .env
-ls -l /dev/input/by-id/
+ls -l /dev/input/by-path/
 ```
 
 Regenerate `.env` after changing USB receivers:

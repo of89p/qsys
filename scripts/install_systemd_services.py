@@ -16,6 +16,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_INSTALL_DIR = Path("/etc/systemd/system")
+DEFAULT_DEVICE_DIR = Path("/dev/input/by-path")
 SERVICE_NAMES = ("qsys-server.service", "qsys-interceptor.service")
 
 
@@ -50,6 +51,12 @@ def parse_args() -> argparse.Namespace:
         help="Environment file for the interceptor. Default: <root>/.env.",
     )
     parser.add_argument(
+        "--device-dir",
+        type=Path,
+        default=DEFAULT_DEVICE_DIR,
+        help="Input device directory used to generate .env. Default: /dev/input/by-path.",
+    )
+    parser.add_argument(
         "--install-dir",
         type=Path,
         default=DEFAULT_INSTALL_DIR,
@@ -58,7 +65,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--skip-env",
         action="store_true",
-        help="Do not generate or update .env from /dev/input/by-id.",
+        help="Do not generate or update .env from the input device directory.",
     )
     parser.add_argument(
         "--no-input-group",
@@ -186,7 +193,13 @@ def run(command: list[str], dry_run: bool) -> None:
     subprocess.run(command, check=True)
 
 
-def update_env_file(root: Path, env_file: Path, user: str, dry_run: bool) -> None:
+def update_env_file(
+    root: Path,
+    env_file: Path,
+    device_dir: Path,
+    user: str,
+    dry_run: bool,
+) -> None:
     script = root / "scripts" / "update_env_from_ls.py"
     command = [
         sys.executable,
@@ -195,6 +208,8 @@ def update_env_file(root: Path, env_file: Path, user: str, dry_run: bool) -> Non
         str(env_file),
         "--example-file",
         str(root / ".env.example"),
+        "--device-dir",
+        str(device_dir),
     ]
 
     if dry_run:
@@ -204,7 +219,7 @@ def update_env_file(root: Path, env_file: Path, user: str, dry_run: bool) -> Non
     result = subprocess.run(command, check=False)
     if result.returncode != 0:
         print(
-            "Warning: could not update .env from /dev/input/by-id. "
+            f"Warning: could not update .env from {device_dir}. "
             "You can rerun scripts/update_env_from_ls.py after plugging in keypads.",
             file=sys.stderr,
         )
@@ -262,6 +277,7 @@ def main() -> int:
         root = resolved(args.root)
         python = python_path(root, args.python)
         env_file = resolved(args.env_file) if args.env_file else root / ".env"
+        device_dir = resolved(args.device_dir)
 
         if needs_root(args) and os.geteuid() != 0:
             raise RuntimeError(
@@ -278,7 +294,7 @@ def main() -> int:
         services = rendered_services(root, user, python, env_file)
 
         if not args.skip_env:
-            update_env_file(root, env_file, user, args.dry_run)
+            update_env_file(root, env_file, device_dir, user, args.dry_run)
         if not args.no_input_group:
             ensure_input_group(user, args.dry_run)
 
