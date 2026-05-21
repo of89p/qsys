@@ -1,241 +1,295 @@
-<!DOCTYPE html>
+<!doctype html>
 <html class="dark" lang="en">
-<head>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Order Queue System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body {
-            background-color: #000000;
-            color: #ffffff;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            font-family: sans-serif;
-        }
-        /* Color Constraints */
-        .text-ready { color: #facc15; } /* Bright Yellow */
-        .header-drinks { color: #3b82f6; } /* Bright Blue */
-        .header-food { color: #b45309; }   /* Brown */
-        
-        /* Typography Scaling */
-        .num-new { font-size: 18rem; line-height: 1; font-weight: 800; }
-        .num-past { font-size: 11rem; line-height: 1.1; color: #ffffff; font-weight: 700; opacity: 0.8; }
-        
-        .column-divider { width: 4px; background: #222; margin: 40px 0; }
-        .sound-enable {
-            position: fixed;
-            right: 24px;
-            bottom: 24px;
-            z-index: 10;
-            display: block;
-            background: #ffffff;
-            color: #000000;
-            border: 0;
-            border-radius: 4px;
-            padding: 16px 22px;
-            font-size: 1.25rem;
-            font-weight: 800;
-            cursor: pointer;
-        }
-        .sound-enable.hidden { display: none; }
-    </style>
-</head>
-<body>
+      body {
+        background-color: #000000;
+        color: #ffffff;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        font-family: sans-serif;
+      }
+      /* Color Constraints */
+      .text-ready {
+        color: #facc15;
+      } /* Bright Yellow */
+      .header-drinks {
+        color: #3b82f6;
+      } /* Bright Blue */
+      .header-food {
+        color: #b45309;
+      } /* Brown */
 
+      /* Typography Scaling */
+      .num-new {
+        font-size: 18rem;
+        line-height: 1;
+        font-weight: 800;
+      }
+      .num-past {
+        font-size: 11rem;
+        line-height: 1.1;
+        color: #ffffff;
+        font-weight: 700;
+        opacity: 0.8;
+      }
+
+      .column-divider {
+        width: 4px;
+        background: #222;
+        margin: 40px 0;
+      }
+      .sound-enable {
+        position: fixed;
+        right: 24px;
+        bottom: 24px;
+        z-index: 10;
+        display: block;
+        background: #ffffff;
+        color: #000000;
+        border: 0;
+        border-radius: 4px;
+        padding: 16px 22px;
+        font-size: 1.25rem;
+        font-weight: 800;
+        cursor: pointer;
+      }
+      .sound-enable.hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body class="scale-75">
     <header class="w-full flex justify-center items-center h-40 shrink-0">
-        <h1 class="text-7xl font-bold uppercase tracking-tighter">Order Collection</h1>
+      <h1 class="text-7xl font-bold uppercase tracking-tighter">
+        Order Collection
+      </h1>
     </header>
 
-    <main class="flex-1 w-full flex flex-row px-16 pb-12 gap-12">
-        <!-- Drinks Column -->
-        <section class="flex-1 flex flex-col items-center">
-            <div id="drinks-header" class="mb-12">
-                <h2 class="text-6xl font-black header-drinks uppercase tracking-tight">Drinks and Snacks</h2>
-            </div>
-            <div id="drinks-list" class="flex flex-col items-center justify-start gap-12 w-full">
-                <!-- Numbers injected here -->
-            </div>
-        </section>
+    <main class="flex w-full flex-row pb-12 gap-4 min-h-full">
+      <!-- Drinks Column -->
+      <section class="w-1/2 flex flex-col items-center">
+        <div id="drinks-header" class="text-center mb-12">
+          <h2
+            class="text-6xl font-black header-drinks uppercase tracking-tight"
+          >
+            Drinks and Snacks
+          </h2>
+        </div>
+        <div
+          id="drinks-list"
+          class="flex flex-col items-center justify-start gap-12 w-full"
+        >
+          <!-- Numbers injected here -->
+        </div>
+      </section>
 
-        <div class="column-divider"></div>
+      <div class="column-divider m-0"></div>
 
-        <!-- Food Column -->
-        <section class="flex-1 flex flex-col items-center">
-            <div id="food-header" class="mb-12">
-                <h2 class="text-6xl font-black header-food uppercase tracking-tight">Food</h2>
-            </div>
-            <div id="food-list" class="flex flex-col items-center justify-start gap-12 w-full">
-                <!-- Numbers injected here -->
-            </div>
-        </section>
+      <!-- Food Column -->
+      <section class="w-1/2 flex flex-col items-center">
+        <div id="food-header" class="mb-12">
+          <h2 class="text-6xl font-black header-food uppercase tracking-tight">
+            Food
+          </h2>
+        </div>
+        <div
+          id="food-list"
+          class="flex flex-col items-center justify-start gap-12 w-full"
+        >
+          <!-- Numbers injected here -->
+        </div>
+      </section>
     </main>
 
     <!-- Notification Sound -->
-    <button id="sound-enable" class="sound-enable" type="button">Enable Sound</button>
+    <button id="sound-enable" class="sound-enable" type="button">
+      Enable Sound
+    </button>
 
     <script>
-    (() => {
-    const state = {
-        drinks: [],
-        food: [],
-        mode: "FOOD",
-        dingId: null,
-    };
-    const DING_CUTOFF_MS = 750;
-    const DING_CUTOFF_SECONDS = DING_CUTOFF_MS / 1000;
-    let audioContext = null;
-    let activeDingNodes = null;
-    let dingStopTimer = null;
-    let soundEnabled = false;
+      ;(() => {
+        const state = {
+          drinks: [],
+          food: [],
+          mode: "FOOD",
+          dingId: null,
+        }
+        const DING_CUTOFF_MS = 750
+        const DING_CUTOFF_SECONDS = DING_CUTOFF_MS / 1000
+        let audioContext = null
+        let activeDingNodes = null
+        let dingStopTimer = null
+        let soundEnabled = false
 
-    // 1. RENDER FUNCTION (Updates the screen)
-    function render() {
-        const dList = document.getElementById('drinks-list');
-        const fList = document.getElementById('food-list');
-        dList.innerHTML = state.drinks.map((n, i) => `<div class="${i===0 ? 'num-new text-ready' : 'num-past'}">${n}</div>`).join('');
-        fList.innerHTML = state.food.map((n, i) => `<div class="${i===0 ? 'num-new text-ready' : 'num-past'}">${n}</div>`).join('');
-    }
-
-    function playDing() {
-        stopDing();
-
-        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContextClass) {
-            showSoundEnable();
-            console.error("AudioContext is not supported by this browser.");
-            return;
+        // 1. RENDER FUNCTION (Updates the screen)
+        function render() {
+          const dList = document.getElementById("drinks-list")
+          const fList = document.getElementById("food-list")
+          dList.innerHTML = state.drinks
+            .map(
+              (n, i) =>
+                `<div class="${i === 0 ? "num-new text-ready" : "num-past"}">${n}</div>`,
+            )
+            .join("")
+          fList.innerHTML = state.food
+            .map(
+              (n, i) =>
+                `<div class="${i === 0 ? "num-new text-ready" : "num-past"}">${n}</div>`,
+            )
+            .join("")
         }
 
-        if (audioContext === null) {
-            audioContext = new AudioContextClass();
+        function playDing() {
+          stopDing()
+
+          const AudioContextClass =
+            window.AudioContext || window.webkitAudioContext
+          if (!AudioContextClass) {
+            showSoundEnable()
+            console.error("AudioContext is not supported by this browser.")
+            return
+          }
+
+          if (audioContext === null) {
+            audioContext = new AudioContextClass()
+          }
+
+          const start = () => {
+            hideSoundEnable()
+            soundEnabled = true
+
+            const now = audioContext.currentTime
+            const gain = audioContext.createGain()
+            const lowTone = audioContext.createOscillator()
+            const highTone = audioContext.createOscillator()
+
+            lowTone.type = "triangle"
+            highTone.type = "sine"
+            lowTone.frequency.setValueAtTime(880, now)
+            highTone.frequency.setValueAtTime(1320, now)
+
+            gain.gain.setValueAtTime(0.0001, now)
+            gain.gain.exponentialRampToValueAtTime(0.7, now + 0.02)
+            gain.gain.exponentialRampToValueAtTime(
+              0.0001,
+              now + DING_CUTOFF_SECONDS,
+            )
+
+            lowTone.connect(gain)
+            highTone.connect(gain)
+            gain.connect(audioContext.destination)
+
+            activeDingNodes = { lowTone, highTone, gain }
+            lowTone.start(now)
+            highTone.start(now)
+            lowTone.stop(now + DING_CUTOFF_SECONDS)
+            highTone.stop(now + DING_CUTOFF_SECONDS)
+            dingStopTimer = setTimeout(stopDing, DING_CUTOFF_MS)
+          }
+
+          if (audioContext.state === "suspended") {
+            audioContext
+              .resume()
+              .then(() => {
+                if (audioContext.state !== "running") {
+                  showSoundEnable()
+                  console.error("Ding playback is still blocked.")
+                  return
+                }
+                start()
+              })
+              .catch((err) => {
+                showSoundEnable()
+                console.error("Ding playback blocked", err)
+              })
+            return
+          }
+
+          start()
         }
 
-        const start = () => {
-            hideSoundEnable();
-            soundEnabled = true;
+        function stopDing() {
+          if (dingStopTimer !== null) {
+            clearTimeout(dingStopTimer)
+            dingStopTimer = null
+          }
 
-            const now = audioContext.currentTime;
-            const gain = audioContext.createGain();
-            const lowTone = audioContext.createOscillator();
-            const highTone = audioContext.createOscillator();
-
-            lowTone.type = 'triangle';
-            highTone.type = 'sine';
-            lowTone.frequency.setValueAtTime(880, now);
-            highTone.frequency.setValueAtTime(1320, now);
-
-            gain.gain.setValueAtTime(0.0001, now);
-            gain.gain.exponentialRampToValueAtTime(0.7, now + 0.02);
-            gain.gain.exponentialRampToValueAtTime(0.0001, now + DING_CUTOFF_SECONDS);
-
-            lowTone.connect(gain);
-            highTone.connect(gain);
-            gain.connect(audioContext.destination);
-
-            activeDingNodes = { lowTone, highTone, gain };
-            lowTone.start(now);
-            highTone.start(now);
-            lowTone.stop(now + DING_CUTOFF_SECONDS);
-            highTone.stop(now + DING_CUTOFF_SECONDS);
-            dingStopTimer = setTimeout(stopDing, DING_CUTOFF_MS);
-        };
-
-        if (audioContext.state === 'suspended') {
-            audioContext.resume()
-                .then(() => {
-                    if (audioContext.state !== 'running') {
-                        showSoundEnable();
-                        console.error("Ding playback is still blocked.");
-                        return;
-                    }
-                    start();
-                })
-                .catch((err) => {
-                    showSoundEnable();
-                    console.error("Ding playback blocked", err);
-                });
-            return;
-        }
-
-        start();
-    }
-
-    function stopDing() {
-        if (dingStopTimer !== null) {
-            clearTimeout(dingStopTimer);
-            dingStopTimer = null;
-        }
-
-        if (activeDingNodes !== null) {
+          if (activeDingNodes !== null) {
             try {
-                activeDingNodes.lowTone.stop();
-                activeDingNodes.highTone.stop();
+              activeDingNodes.lowTone.stop()
+              activeDingNodes.highTone.stop()
             } catch (err) {}
-            activeDingNodes.lowTone.disconnect();
-            activeDingNodes.highTone.disconnect();
-            activeDingNodes.gain.disconnect();
-            activeDingNodes = null;
+            activeDingNodes.lowTone.disconnect()
+            activeDingNodes.highTone.disconnect()
+            activeDingNodes.gain.disconnect()
+            activeDingNodes = null
+          }
         }
-    }
 
-    function showSoundEnable() {
-        document.getElementById('sound-enable').classList.remove('hidden');
-    }
+        function showSoundEnable() {
+          document.getElementById("sound-enable").classList.remove("hidden")
+        }
 
-    function hideSoundEnable() {
-        document.getElementById('sound-enable').classList.add('hidden');
-    }
+        function hideSoundEnable() {
+          document.getElementById("sound-enable").classList.add("hidden")
+        }
 
-    document.getElementById('sound-enable').addEventListener('click', () => {
-        playDing();
-    });
+        document
+          .getElementById("sound-enable")
+          .addEventListener("click", () => {
+            playDing()
+          })
 
-    // 2. VIEWER LOGIC: TV receives state updates from the Pi over SSE
-    function applyState(data) {
-        const dingId = data.ding_id ?? 0;
-        if (state.dingId !== null && dingId !== state.dingId) {
+        // 2. VIEWER LOGIC: TV receives state updates from the Pi over SSE
+        function applyState(data) {
+          const dingId = data.ding_id ?? 0
+          if (state.dingId !== null && dingId !== state.dingId) {
             if (soundEnabled) {
-                playDing();
+              playDing()
             } else {
-                showSoundEnable();
-                console.error("Sound is not enabled yet.");
+              showSoundEnable()
+              console.error("Sound is not enabled yet.")
             }
+          }
+
+          state.drinks = data.drinks
+          state.food = data.food
+          state.mode = data.mode
+          state.dingId = dingId
+          render()
         }
 
-        state.drinks = data.drinks;
-        state.food = data.food;
-        state.mode = data.mode;
-        state.dingId = dingId;
-        render();
-    }
+        function connectStateStream() {
+          const events = new EventSource("/api/events")
 
-    function connectStateStream() {
-        const events = new EventSource('/api/events');
-
-        events.addEventListener('state', (event) => {
+          events.addEventListener("state", (event) => {
             try {
-                applyState(JSON.parse(event.data));
+              applyState(JSON.parse(event.data))
             } catch (err) {
-                console.error("Invalid state event", err);
+              console.error("Invalid state event", err)
             }
-        });
+          })
 
-        events.onerror = () => {
-            console.error("Waiting for server...");
-        };
-    }
+          events.onerror = () => {
+            console.error("Waiting for server...")
+          }
+        }
 
-    if (window.EventSource) {
-        connectStateStream();
-    } else {
-        console.error("This browser does not support server-sent events.");
-    }
+        if (window.EventSource) {
+          connectStateStream()
+        } else {
+          console.error("This browser does not support server-sent events.")
+        }
 
-    render();
-    })();
+        render()
+      })()
     </script>
-</body>
+  </body>
 </html>

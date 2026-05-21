@@ -12,18 +12,32 @@ source code.
 - One or two USB keyboard/keypad receivers
 - The QSys source code copied or cloned onto the Pi
 
-## 1. Get The Source
+## 0. Setting up the Pi
+0.1. Plug in all 3 USB Devices (Keypads 1 and 2 and a Dev Keyboard)
 
-Copy or clone the project onto the Pi, then enter the project directory:
-
+0.2. Connect to Wifi
+First, list all available Wi-Fi networks by typing:
 ```bash
-cd /path/to/qsys
+nmcli device wifi list
 ```
 
-If using git, this usually looks like:
+Note theexact name (SSID) of your network, then connect using this command (replace `YOUR_SSID` and `YOUR_PASSWORD` with your actual network details):
+```bash
+nmcli device wifi connect "YOUR_SSID" password "YOUR_PASSWORD"
+```
+
+0.3 Update linux and install git if not already installed.
+```bash
+sudo apt update
+sudo apt install -y git
+git --version
+```
+
+## 1. Get The Source
+
 
 ```bash
-git clone <repo-url> qsys
+git clone https://github.com/of89p/qsys.git
 cd qsys
 ```
 
@@ -88,7 +102,6 @@ because that keyboard is reserved as the dev keyboard. When scanning
 `/dev/input/by-path`, the matching by-path symlink is ignored too.
 
 ## 5. Install Services
-
 Run the installer from the project directory:
 
 ```bash
