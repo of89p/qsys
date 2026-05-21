@@ -16,40 +16,29 @@
     </header>
 
     <main class="flex w-full flex-row gap-4 min-h-screen">
-      <!-- Drinks Column -->
-      <section class="w-1/2 flex flex-col items-center">
+      <section class="flex-1 flex flex-col items-center">
         <div id="drinks-header" class="text-center mb-4">
-          <h2
-            class="text-3xl font-black uppercase tracking-tight text-blue-500"
-          >
-            Drinks and Toast
-          </h2>
+          <h2 class="text-3xl font-black uppercase tracking-tight text-blue-500">Drinks and Toast</h2>
         </div>
-        <div
-          id="drinks-list"
-          class="flex flex-col items-center justify-start gap-4 w-full"
-        >
-          <!-- Numbers injected here -->
-        </div>
+        <div id="drinks-list" class="flex flex-col items-center justify-start gap-4 w-full"></div>
       </section>
 
       <div class="m-0 my-10 w-1 bg-[#222]"></div>
 
-      <!-- Food Column -->
-      <section class="w-1/2 flex flex-col items-center">
+      <section class="flex-1 flex flex-col items-center">
+        <div id="chicken-header" class="text-center mb-4">
+          <h2 class="text-3xl font-black uppercase tracking-tight text-red-500">Chicken Rice</h2>
+        </div>
+        <div id="chicken-list" class="flex flex-col items-center justify-start gap-4 w-full"></div>
+      </section>
+
+      <div class="m-0 my-10 w-1 bg-[#222]"></div>
+
+      <section class="flex-1 flex flex-col items-center">
         <div id="food-header" class="mb-4">
-          <h2
-            class="text-3xl font-black uppercase tracking-tight text-amber-700"
-          >
-            Food
-          </h2>
+          <h2 class="text-3xl font-black uppercase tracking-tight text-amber-700">Food</h2>
         </div>
-        <div
-          id="food-list"
-          class="flex flex-col items-center justify-start gap-4 w-full"
-        >
-          <!-- Numbers injected here -->
-        </div>
+        <div id="food-list" class="flex flex-col items-center justify-start gap-4 w-full"></div>
       </section>
     </main>
 
@@ -66,6 +55,7 @@
       ;(() => {
         const state = {
           drinks: [],
+          chicken: [],
           food: [],
           mode: "FOOD",
           dingId: null,
@@ -80,8 +70,15 @@
         // 1. RENDER FUNCTION (Updates the screen)
         function render() {
           const dList = document.getElementById("drinks-list")
+          const cList = document.getElementById("chicken-list")
           const fList = document.getElementById("food-list")
           dList.innerHTML = state.drinks
+            .map(
+              (n, i) =>
+                `<div class="${i === 0 ? "text-9xl leading-none font-extrabold text-yellow-400" : "text-8xl leading-[1.1] font-bold text-white opacity-80"}">${n}</div>`,
+            )
+            .join("")
+          cList.innerHTML = state.chicken
             .map(
               (n, i) =>
                 `<div class="${i === 0 ? "text-9xl leading-none font-extrabold text-yellow-400" : "text-8xl leading-[1.1] font-bold text-white opacity-80"}">${n}</div>`,
@@ -209,6 +206,7 @@
           }
 
           state.drinks = data.drinks
+          state.chicken = data.chicken
           state.food = data.food
           state.mode = data.mode
           state.dingId = dingId

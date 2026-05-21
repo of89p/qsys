@@ -29,6 +29,7 @@ logger = logging.getLogger("qsys.interceptor")
 
 # Set these from .env. Generate that file with scripts/update_env_from_ls.py.
 DRINKS_DEVICE_PATH = os.getenv("DRINKS_DEVICE_PATH", "").strip()
+CHICKEN_DEVICE_PATH = os.getenv("CHICKEN_DEVICE_PATH", "").strip()
 FOOD_DEVICE_PATH = os.getenv("FOOD_DEVICE_PATH", "").strip()
 
 # Keypad digit keycodes. Normal row digits are ignored by default so a regular
@@ -244,6 +245,8 @@ async def main():
 
     if DRINKS_DEVICE_PATH:
         keypads.append(read_keypad(DRINKS_DEVICE_PATH, "drinks"))
+    if CHICKEN_DEVICE_PATH:                                       
+        keypads.append(read_keypad(CHICKEN_DEVICE_PATH, "chicken")) 
     if FOOD_DEVICE_PATH:
         keypads.append(read_keypad(FOOD_DEVICE_PATH, "food"))
 

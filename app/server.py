@@ -23,6 +23,7 @@ app = Flask(__name__)
 # This is the "Database" that lives on the Pi
 state = {
     "drinks": [],
+    "chicken": [],
     "food": [],
     "mode": "FOOD",
     "ding_id": 0,
@@ -35,6 +36,7 @@ MAX_VISIBLE_ORDERS = 3
 def state_snapshot():
     return {
         "drinks": list(state["drinks"]),
+        "chicken": list(state["chicken"]),
         "food": list(state["food"]),
         "mode": state["mode"],
         "ding_id": state["ding_id"],
@@ -100,7 +102,7 @@ def queue_number():
     station = str(data.get("station", "")).lower()
     number = str(data.get("number", "")).strip()
 
-    if station not in ("drinks", "food"):
+    if station not in ("drinks", "chicken", "food"):
         return jsonify(
             {"status": "error", "message": "station must be drinks or food"}
         ), 400
