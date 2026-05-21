@@ -5,103 +5,48 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Order Queue System</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-      body {
-        background-color: #000000;
-        color: #ffffff;
-        height: 100vh;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-        font-family: sans-serif;
-      }
-      /* Color Constraints */
-      .text-ready {
-        color: #facc15;
-      } /* Bright Yellow */
-      .header-drinks {
-        color: #3b82f6;
-      } /* Bright Blue */
-      .header-food {
-        color: #b45309;
-      } /* Brown */
-
-      /* Typography Scaling */
-      .num-new {
-        font-size: 18rem;
-        line-height: 1;
-        font-weight: 800;
-      }
-      .num-past {
-        font-size: 11rem;
-        line-height: 1.1;
-        color: #ffffff;
-        font-weight: 700;
-        opacity: 0.8;
-      }
-
-      .column-divider {
-        width: 4px;
-        background: #222;
-        margin: 40px 0;
-      }
-      .sound-enable {
-        position: fixed;
-        right: 24px;
-        bottom: 24px;
-        z-index: 10;
-        display: block;
-        background: #ffffff;
-        color: #000000;
-        border: 0;
-        border-radius: 4px;
-        padding: 16px 22px;
-        font-size: 1.25rem;
-        font-weight: 800;
-        cursor: pointer;
-      }
-      .sound-enable.hidden {
-        display: none;
-      }
-    </style>
   </head>
-  <body class="scale-75">
-    <header class="w-full flex justify-center items-center h-40 shrink-0">
-      <h1 class="text-7xl font-bold uppercase tracking-tighter">
+  <body
+    class="flex h-screen flex-col overflow-hidden bg-black font-sans text-white"
+  >
+    <header class="w-full flex justify-center items-center pt-4 shrink-0">
+      <h1 class="text-4xl font-bold uppercase tracking-tighter">
         Order Collection
       </h1>
     </header>
 
-    <main class="flex w-full flex-row pb-12 gap-4 min-h-full">
+    <main class="flex w-full flex-row gap-4 min-h-screen">
       <!-- Drinks Column -->
       <section class="w-1/2 flex flex-col items-center">
-        <div id="drinks-header" class="text-center mb-12">
+        <div id="drinks-header" class="text-center mb-4">
           <h2
-            class="text-6xl font-black header-drinks uppercase tracking-tight"
+            class="text-3xl font-black uppercase tracking-tight text-blue-500"
           >
-            Drinks and Snacks
+            Drinks and Toast
           </h2>
         </div>
         <div
           id="drinks-list"
-          class="flex flex-col items-center justify-start gap-12 w-full"
+          class="flex flex-col items-center justify-start gap-4 w-full"
         >
           <!-- Numbers injected here -->
         </div>
       </section>
 
-      <div class="column-divider m-0"></div>
+      <div class="m-0 my-10 w-1 bg-[#222]"></div>
 
       <!-- Food Column -->
       <section class="w-1/2 flex flex-col items-center">
-        <div id="food-header" class="mb-12">
-          <h2 class="text-6xl font-black header-food uppercase tracking-tight">
+        <div id="food-header" class="mb-4">
+          <h2
+            class="text-3xl font-black uppercase tracking-tight text-amber-700"
+          >
             Food
           </h2>
         </div>
         <div
           id="food-list"
-          class="flex flex-col items-center justify-start gap-12 w-full"
+          class="flex flex-col items-center justify-start gap-4 w-full"
         >
           <!-- Numbers injected here -->
         </div>
@@ -109,7 +54,11 @@
     </main>
 
     <!-- Notification Sound -->
-    <button id="sound-enable" class="sound-enable" type="button">
+    <button
+      id="sound-enable"
+      class="fixed bottom-6 right-6 z-10 block cursor-pointer rounded border-0 bg-white px-[22px] py-4 text-xl font-extrabold text-black"
+      type="button"
+    >
       Enable Sound
     </button>
 
@@ -135,13 +84,13 @@
           dList.innerHTML = state.drinks
             .map(
               (n, i) =>
-                `<div class="${i === 0 ? "num-new text-ready" : "num-past"}">${n}</div>`,
+                `<div class="${i === 0 ? "text-9xl leading-none font-extrabold text-yellow-400" : "text-8xl leading-[1.1] font-bold text-white opacity-80"}">${n}</div>`,
             )
             .join("")
           fList.innerHTML = state.food
             .map(
               (n, i) =>
-                `<div class="${i === 0 ? "num-new text-ready" : "num-past"}">${n}</div>`,
+                `<div class="${i === 0 ? "text-9xl leading-none font-extrabold text-yellow-400" : "text-8xl leading-[1.1] font-bold text-white opacity-80"}">${n}</div>`,
             )
             .join("")
         }
