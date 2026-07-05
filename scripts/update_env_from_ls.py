@@ -22,10 +22,10 @@ DEFAULT_ENV_VALUES = {
     "QSYS_ACCEPT_ROW_DIGITS": "0",
     "FOOD_DEVICE_PATH": "",
     "DRINKS_DEVICE_PATH": "",
+    "STATION3_DEVICE_PATH": "",
 }
 
-DEVICE_ENV_KEYS = ("FOOD_DEVICE_PATH", "DRINKS_DEVICE_PATH")
-
+DEVICE_ENV_KEYS = ("FOOD_DEVICE_PATH", "DRINKS_DEVICE_PATH", "STATION3_DEVICE_PATH")
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -270,6 +270,7 @@ def main() -> int:
     device_values = {
         DEVICE_ENV_KEYS[0]: keyboard_paths[0],
         DEVICE_ENV_KEYS[1]: keyboard_paths[1] if len(keyboard_paths) > 1 else "",
+        DEVICE_ENV_KEYS[2]: keyboard_paths[2] if len(keyboard_paths) > 2 else "",
     }
 
     lines = load_env_lines(args.env_file, args.example_file)
@@ -292,6 +293,10 @@ def main() -> int:
     )
     print(
         f"{DEVICE_ENV_KEYS[1]}={device_values[DEVICE_ENV_KEYS[1]]}",
+        file=summary_stream,
+    )
+    print(
+        f"{DEVICE_ENV_KEYS[2]}={device_values[DEVICE_ENV_KEYS[2]]}",
         file=summary_stream,
     )
     if len(keyboard_paths) > len(DEVICE_ENV_KEYS):
