@@ -13,6 +13,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DEVICE_DIR = Path("/dev/input/by-path")
 EXCLUDED_DEVICE_PATHS = (
     Path("/dev/input/by-id/usb-Keychron_Keychron_K6-event-kbd"),
+    Path("/dev/input/by-id/usb-Logitech_USB_Keyboard-event-kbd"),
 )
 
 DEFAULT_ENV_VALUES = {
