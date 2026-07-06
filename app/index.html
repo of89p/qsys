@@ -43,13 +43,13 @@
     </main>
 
     <!-- Notification Sound -->
-    <button
+    <!-- <button
       id="sound-enable"
       class="fixed bottom-6 right-6 z-10 block cursor-pointer rounded border-0 bg-white px-[22px] py-4 text-xl font-extrabold text-black"
       type="button"
     >
       Enable Sound
-    </button>
+    </button> -->
 
     <script>
       ;(() => {
@@ -197,7 +197,7 @@
         function applyState(data) {
           const dingId = data.ding_id ?? 0
           if (state.dingId !== null && dingId !== state.dingId) {
-            if (soundEnabled) {
+            if (true) {
               playDing()
             } else {
               showSoundEnable()
