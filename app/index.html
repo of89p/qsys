@@ -15,32 +15,41 @@
       </h1>
     </header>
 
-    <main class="flex w-full flex-row gap-4 min-h-screen">
+    <!-- Changed min-h-screen to flex-1 so it leaves room for the footer -->
+    <main class="flex flex-1 w-full flex-row gap-4 pt-8">
+      <!-- Drinks Section -->
       <section class="flex-1 flex flex-col items-center">
-        <div id="drinks-header" class="text-center mb-4">
-          <h2 class="text-3xl font-black uppercase tracking-tight text-blue-500">Drinks and Toast</h2>
+        <div id="drinks-header" class="text-center mb-6">
+          <h2 class="text-6xl font-black uppercase tracking-tight text-yellow-400">Drinks</h2>
         </div>
-        <div id="drinks-list" class="flex flex-col items-center justify-start gap-4 w-full"></div>
+        <div id="drinks-list" class="flex flex-col items-center justify-start gap-6 w-full"></div>
       </section>
 
       <div class="m-0 my-10 w-1 bg-[#222]"></div>
 
+      <!-- Chicken Rice Section -->
       <section class="flex-1 flex flex-col items-center">
-        <div id="chicken-header" class="text-center mb-4">
-          <h2 class="text-3xl font-black uppercase tracking-tight text-red-500">Chicken Rice</h2>
+        <div id="chicken-header" class="text-center mb-6">
+          <h2 class="text-6xl font-black uppercase tracking-tight text-yellow-400">Chicken Rice</h2>
         </div>
-        <div id="chicken-list" class="flex flex-col items-center justify-start gap-4 w-full"></div>
+        <div id="chicken-list" class="flex flex-col items-center justify-start gap-6 w-full"></div>
       </section>
 
       <div class="m-0 my-10 w-1 bg-[#222]"></div>
 
+      <!-- Others Section -->
       <section class="flex-1 flex flex-col items-center">
-        <div id="food-header" class="mb-4">
-          <h2 class="text-3xl font-black uppercase tracking-tight text-amber-700">Others</h2>
+        <div id="food-header" class="text-center mb-6">
+          <h2 class="text-6xl font-black uppercase tracking-tight text-yellow-400">Others</h2>
         </div>
-        <div id="food-list" class="flex flex-col items-center justify-start gap-4 w-full"></div>
+        <div id="food-list" class="flex flex-col items-center justify-start gap-6 w-full"></div>
       </section>
     </main>
+
+    <!-- New Footer Section -->
+    <footer class="w-full shrink-0 py-4 text-center text-sm text-white/50">
+      <p>Made by company XYZ &bull; Contact us at [Insert Phone Number]</p>
+    </footer>
 
     <!-- Notification Sound -->
     <button
@@ -53,10 +62,11 @@
 
     <script>
       ;(() => {
+        // Dummy data for layout preview
         const state = {
-          drinks: [],
-          chicken: [],
-          food: [],
+          drinks: ["012", "015", "018"],
+          chicken: ["042", "049"],
+          food: ["088", "091", "095", "099"],
           mode: "FOOD",
           dingId: null,
         }
