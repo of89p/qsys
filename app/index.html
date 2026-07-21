@@ -25,20 +25,21 @@
   <body
     class="flex h-screen flex-col overflow-hidden bg-black font-sans text-white"
   >
-    <header class="w-full flex justify-center items-center pt-4 shrink-0">
-      <h1 class="text-4xl font-bold uppercase tracking-tighter">
-        Order Collection
-      </h1>
-    </header>
-
     <!-- Changed min-h-screen to flex-1 so it leaves room for the footer -->
     <main class="flex flex-1 w-full flex-row gap-4 pt-8">
       <!-- Drinks Section -->
       <section class="flex-1 flex flex-col items-center">
         <div id="drinks-header" class="text-center mb-6">
-          <h2 class="text-6xl font-black uppercase tracking-tight text-yellow-400">Drinks</h2>
+          <h2
+            class="text-7xl font-black uppercase tracking-tight text-yellow-400"
+          >
+            Drinks
+          </h2>
         </div>
-        <div id="drinks-list" class="flex flex-col items-center justify-start gap-6 w-full"></div>
+        <div
+          id="drinks-list"
+          class="flex flex-col items-center justify-start gap-8 w-full"
+        ></div>
       </section>
 
       <div class="m-0 my-10 w-1 bg-[#222]"></div>
@@ -46,9 +47,16 @@
       <!-- Chicken Rice Section -->
       <section class="flex-1 flex flex-col items-center">
         <div id="chicken-header" class="text-center mb-6">
-          <h2 class="text-6xl font-black uppercase tracking-tight text-yellow-400">Chicken Rice</h2>
+          <h2
+            class="text-7xl font-black uppercase tracking-tight text-yellow-400"
+          >
+            Chicken Rice
+          </h2>
         </div>
-        <div id="chicken-list" class="flex flex-col items-center justify-start gap-6 w-full"></div>
+        <div
+          id="chicken-list"
+          class="flex flex-col items-center justify-start gap-8 w-full"
+        ></div>
       </section>
 
       <div class="m-0 my-10 w-1 bg-[#222]"></div>
@@ -56,9 +64,16 @@
       <!-- Others Section -->
       <section class="flex-1 flex flex-col items-center">
         <div id="food-header" class="text-center mb-6">
-          <h2 class="text-6xl font-black uppercase tracking-tight text-yellow-400">Others</h2>
+          <h2
+            class="text-7xl font-black uppercase tracking-tight text-yellow-400"
+          >
+            Other Food
+          </h2>
         </div>
-        <div id="food-list" class="flex flex-col items-center justify-start gap-6 w-full"></div>
+        <div
+          id="food-list"
+          class="flex flex-col items-center justify-start gap-8 w-full"
+        ></div>
       </section>
     </main>
 
@@ -78,8 +93,7 @@
           flashStation: null,
           flashDingId: null,
         }
-        const DING_SOUND_URL =
-          "/static/freesound_community-ding-dong-81717.mp3"
+        const DING_SOUND_URL = "/static/freesound_community-ding-dong-81717.mp3"
         const dingAudio = new Audio(DING_SOUND_URL)
         dingAudio.preload = "auto"
 
@@ -91,8 +105,8 @@
             state.flashStation === station &&
             state.flashDingId === state.dingId
           const baseClass = isTopNumber
-            ? "text-9xl leading-none font-extrabold text-yellow-400"
-            : "text-8xl leading-[1.1] font-bold text-white opacity-80"
+            ? "text-[200px] leading-none font-extrabold text-yellow-400"
+            : "text-[200px] leading-[1.1] font-bold text-white opacity-80"
 
           return isLatestCall ? `${baseClass} latest-number-flash` : baseClass
         }
@@ -103,21 +117,16 @@
           const fList = document.getElementById("food-list")
           dList.innerHTML = state.drinks
             .map(
-              (n, i) =>
-                `<div class="${numberClass("DRINKS", i)}">${n}</div>`,
+              (n, i) => `<div class="${numberClass("DRINKS", i)}">${n}</div>`,
             )
             .join("")
           cList.innerHTML = state.chicken
             .map(
-              (n, i) =>
-                `<div class="${numberClass("CHICKEN", i)}">${n}</div>`,
+              (n, i) => `<div class="${numberClass("CHICKEN", i)}">${n}</div>`,
             )
             .join("")
           fList.innerHTML = state.food
-            .map(
-              (n, i) =>
-                `<div class="${numberClass("FOOD", i)}">${n}</div>`,
-            )
+            .map((n, i) => `<div class="${numberClass("FOOD", i)}">${n}</div>`)
             .join("")
         }
 
