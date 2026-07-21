@@ -12,7 +12,7 @@ http://<pi-ip-address>:8080/
 
 - Linux or Raspberry Pi OS
 - Python 3.12 or newer
-- USB keyboard/keypad receiver
+- Up to three USB keyboard/keypad receivers
 - Network access from the TV/browser to the machine running the server
 
 ## Install
@@ -99,11 +99,14 @@ python3 scripts/update_env_from_ls.py --from-file devlogs/ls-logs.txt
 ```
 
 The first `*-event-kbd` device is written as `FOOD_DEVICE_PATH`; the second is
-written as `DRINKS_DEVICE_PATH`. Add `--swap` if those two assignments should be
-reversed.
+written as `DRINKS_DEVICE_PATH`; the third is written as
+`CHICKEN_DEVICE_PATH`. Use `--order food,drinks,chicken` to make the assignment
+explicit, or pass a different station order to match the `ls` output. Add
+`--swap` for older two-keypad Food/Drinks setups where the first two assignments
+should be reversed.
 The default `/dev/input/by-path` paths are tied to USB ports, which works better
-than `/dev/input/by-id` when both keypads are the same brand. Keep each keypad in
-the same USB port after setup.
+than `/dev/input/by-id` when multiple keypads are the same brand. Keep each
+keypad in the same USB port after setup.
 The generator skips `/dev/input/by-id/usb-Keychron_Keychron_K6-event-kbd`
 because that keyboard is reserved as the dev keyboard. When scanning
 `/dev/input/by-path`, the matching by-path symlink is ignored too.
@@ -132,11 +135,12 @@ sudo env FOOD_DEVICE_PATH=/dev/input/by-path/<food-keypad-event-kbd> \
   .venv/bin/python app/interceptor.py
 ```
 
-Run it with separate food and drinks keypads:
+Run it with separate food, drinks, and chicken keypads:
 
 ```bash
 FOOD_DEVICE_PATH=/dev/input/by-path/<food-keypad-event-kbd> \
 DRINKS_DEVICE_PATH=/dev/input/by-path/<drinks-keypad-event-kbd> \
+CHICKEN_DEVICE_PATH=/dev/input/by-path/<chicken-keypad-event-kbd> \
 .venv/bin/python app/interceptor.py
 ```
 
@@ -221,7 +225,8 @@ The interceptor supports these environment variables:
 | `QSYS_LOG_LEVEL` | `INFO` | Interceptor logging level. |
 | `QSYS_ACCEPT_ROW_DIGITS` | empty | Set to `1` only if your keypad sends normal number-row keycodes instead of keypad keycodes. |
 | `FOOD_DEVICE_PATH` | empty | Input device for the Food station. |
-| `DRINKS_DEVICE_PATH` | empty | Input device for the Drinks and Snacks station. |
+| `DRINKS_DEVICE_PATH` | empty | Input device for the Drinks station. |
+| `CHICKEN_DEVICE_PATH` | empty | Input device for the Chicken Rice station. |
 
 The server listens on `0.0.0.0:8080`.
 

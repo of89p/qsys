@@ -9,11 +9,12 @@ source code.
 - Python 3.12 or newer
 - `curl` or `wget` for installing `uv`
 - Network access from the TV/browser to the Pi
-- One or two USB keyboard/keypad receivers
+- Up to three USB keyboard/keypad receivers
 - The QSys source code copied or cloned onto the Pi
 
 ## 0. Setting up the Pi
-0.1. Plug in all 3 USB Devices (Keypads 1 and 2 and a Dev Keyboard)
+0.1. Plug in the USB devices: Food, Drinks, and Chicken keypads, plus the dev
+keyboard if you are using one.
 
 0.2. Connect to Wifi
 First, list all available Wi-Fi networks by typing:
@@ -84,8 +85,8 @@ The service installer prefers `.venv/bin/python` when it exists.
 
 ## 4. Plug In Keypads
 
-Plug in the food keypad, and the drinks keypad if used. Check that Linux can see
-the input devices:
+Plug in the Food, Drinks, and Chicken keypads you plan to use. Check that Linux
+can see the input devices:
 
 ```bash
 ls -l /dev/input/by-path/
@@ -93,7 +94,7 @@ ls -l /dev/input/by-path/
 
 The useful entries are the ones ending in `-event-kbd`.
 `/dev/input/by-path` is used because it identifies the USB port path, which is
-more useful than `/dev/input/by-id` when two keypads are the same brand.
+more useful than `/dev/input/by-id` when multiple keypads are the same brand.
 If you prefer the old brand/device-id paths, pass
 `--device-dir /dev/input/by-id` to `scripts/update_env_from_ls.py` or
 `scripts/install_systemd_services.py`.
@@ -113,7 +114,8 @@ The installer:
 - Detects this checkout path.
 - Detects the Linux user that should run the services.
 - Uses `.venv/bin/python` when available.
-- Generates `.env` from `/dev/input/by-path`.
+- Generates `.env` from `/dev/input/by-path` with Food, Drinks, and Chicken
+  keypad paths.
 - Renders and installs the systemd services.
 - Adds the service user to the `input` group.
 - Enables and restarts both services.
@@ -140,7 +142,30 @@ Preview the generated service files without changing the system:
 python3 scripts/install_systemd_services.py --dry-run
 ```
 
-## 6. Check The Display
+## 6. Set Up The Pi Display Browser
+
+For the Pi display, autostart Chromium in kiosk mode with a dedicated local
+profile and the autoplay policy required for the notification sound:
+
+```bash
+mkdir -p ~/.config/qsys-chromium
+mkdir -p ~/.config/labwc
+nano ~/.config/labwc/autostart
+```
+
+Add this line:
+
+```bash
+chromium --kiosk --user-data-dir="$HOME/.config/qsys-chromium" --autoplay-policy=no-user-gesture-required --noerrdialogs --disable-infobars --no-first-run --start-maximized http://127.0.0.1:8080 &
+```
+
+If the command is named `chromium-browser` on your Pi, use that in the
+autostart line instead of `chromium`.
+
+Each Pi should have its own local profile directory. You do not need to copy a
+profile between Pis; Chromium creates the profile automatically on first launch.
+
+## 7. Check The Display
 
 Find the Pi IP address:
 
@@ -154,7 +179,7 @@ Open this URL from the TV or another browser on the same network:
 http://<pi-ip-address>:8080/
 ```
 
-## 7. Test Without A Keypad
+## 8. Test Without A Keypad
 
 Submit a food queue number manually:
 
@@ -166,6 +191,8 @@ curl -X POST http://127.0.0.1:8080/api/queue \
 
 The display should show `012`.
 
+The valid `station` values are `drinks`, `chicken`, and `food`.
+
 ## Keypad Assignment
 
 The generated `.env` stores keypad paths:
@@ -173,24 +200,29 @@ The generated `.env` stores keypad paths:
 ```env
 FOOD_DEVICE_PATH=/dev/input/by-path/<food-keypad-event-kbd>
 DRINKS_DEVICE_PATH=/dev/input/by-path/<drinks-keypad-event-kbd>
+CHICKEN_DEVICE_PATH=/dev/input/by-path/<chicken-keypad-event-kbd>
 ```
 
-By default, the first detected `*-event-kbd` device becomes `FOOD_DEVICE_PATH`
-and the second becomes `DRINKS_DEVICE_PATH`.
+By default, the first detected `*-event-kbd` device becomes `FOOD_DEVICE_PATH`,
+the second becomes `DRINKS_DEVICE_PATH`, and the third becomes
+`CHICKEN_DEVICE_PATH`.
 The generated paths normally begin with `/dev/input/by-path/`. Keep each keypad
 plugged into the same USB port so those assignments stay stable.
 The Keychron dev keyboard is excluded automatically and will not be assigned to
-Food or Drinks.
+Food, Drinks, or Chicken.
 
-If the keypads are reversed, regenerate `.env` with `--swap` and restart the
-interceptor:
+For a full three-keypad setup, regenerate `.env` with an explicit assignment
+order and restart the interceptor:
 
 ```bash
-python3 scripts/update_env_from_ls.py --swap
+python3 scripts/update_env_from_ls.py --order food,drinks,chicken
 sudo systemctl restart qsys-interceptor.service
 ```
 
-If there is only one keypad, `DRINKS_DEVICE_PATH` stays empty.
+Use the station order that matches the `ls -l /dev/input/by-path/` output. For
+older two-keypad Food/Drinks setups, `--swap` still swaps the first two detected
+devices. If fewer than three keypads are connected, the remaining device path
+variables stay empty.
 
 ## Service Commands
 

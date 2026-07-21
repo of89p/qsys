@@ -104,7 +104,7 @@ def queue_number():
 
     if station not in ("drinks", "chicken", "food"):
         return jsonify(
-            {"status": "error", "message": "station must be drinks or food"}
+            {"status": "error", "message": "station must be drinks, chicken or food"}
         ), 400
     if not number.isdigit():
         return jsonify(

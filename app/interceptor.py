@@ -245,13 +245,16 @@ async def main():
 
     if DRINKS_DEVICE_PATH:
         keypads.append(read_keypad(DRINKS_DEVICE_PATH, "drinks"))
-    if CHICKEN_DEVICE_PATH:                                       
-        keypads.append(read_keypad(CHICKEN_DEVICE_PATH, "chicken")) 
+    if CHICKEN_DEVICE_PATH:
+        keypads.append(read_keypad(CHICKEN_DEVICE_PATH, "chicken"))
     if FOOD_DEVICE_PATH:
         keypads.append(read_keypad(FOOD_DEVICE_PATH, "food"))
 
     if not keypads:
-        raise RuntimeError("Set FOOD_DEVICE_PATH and/or DRINKS_DEVICE_PATH")
+        raise RuntimeError(
+            "Set at least one of FOOD_DEVICE_PATH, DRINKS_DEVICE_PATH, "
+            "or CHICKEN_DEVICE_PATH"
+        )
 
     await asyncio.gather(*keypads)
 

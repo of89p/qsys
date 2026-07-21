@@ -57,6 +57,15 @@ def parse_args() -> argparse.Namespace:
         help="Input device directory used to generate .env. Default: /dev/input/by-path.",
     )
     parser.add_argument(
+        "--device-order",
+        default="food,drinks,chicken",
+        metavar="ORDER",
+        help=(
+            "Comma-separated station order passed to update_env_from_ls.py when "
+            "assigning detected keypads. Default: food,drinks,chicken."
+        ),
+    )
+    parser.add_argument(
         "--install-dir",
         type=Path,
         default=DEFAULT_INSTALL_DIR,
@@ -197,6 +206,7 @@ def update_env_file(
     root: Path,
     env_file: Path,
     device_dir: Path,
+    device_order: str,
     user: str,
     dry_run: bool,
 ) -> None:
@@ -210,6 +220,8 @@ def update_env_file(
         str(root / ".env.example"),
         "--device-dir",
         str(device_dir),
+        "--order",
+        device_order,
     ]
 
     if dry_run:
@@ -241,6 +253,14 @@ def ensure_input_group(user: str, dry_run: bool) -> None:
     already_primary = user_info.pw_gid == input_group.gr_gid
     already_member = user in input_group.gr_mem
     if already_primary or already_member:
+        return
+
+    if dry_run:
+        run(["usermod", "-aG", "input", user], dry_run)
+        print(
+            f"Would add {user} to the input group.",
+            file=sys.stderr,
+        )
         return
 
     run(["usermod", "-aG", "input", user], dry_run)
@@ -294,7 +314,14 @@ def main() -> int:
         services = rendered_services(root, user, python, env_file)
 
         if not args.skip_env:
-            update_env_file(root, env_file, device_dir, user, args.dry_run)
+            update_env_file(
+                root,
+                env_file,
+                device_dir,
+                args.device_order,
+                user,
+                args.dry_run,
+            )
         if not args.no_input_group:
             ensure_input_group(user, args.dry_run)
 

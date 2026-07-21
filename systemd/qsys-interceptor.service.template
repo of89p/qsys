@@ -9,8 +9,8 @@ User={{QSYS_USER}}
 SupplementaryGroups=input
 WorkingDirectory={{QSYS_ROOT}}
 Environment=PYTHONUNBUFFERED=1
-# FOOD_DEVICE_PATH and DRINKS_DEVICE_PATH come from .env, generated from
-# /dev/input/by-path by scripts/update_env_from_ls.py.
+# FOOD_DEVICE_PATH, DRINKS_DEVICE_PATH, and CHICKEN_DEVICE_PATH come from .env,
+# generated from /dev/input/by-path by scripts/update_env_from_ls.py.
 EnvironmentFile=-{{QSYS_ENV_FILE}}
 ExecStart={{QSYS_PYTHON}} {{QSYS_ROOT}}/app/interceptor.py
 Restart=always

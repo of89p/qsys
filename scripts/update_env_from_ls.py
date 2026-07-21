@@ -27,12 +27,38 @@ DEFAULT_ENV_VALUES = {
 }
 
 DEVICE_ENV_KEYS = ("FOOD_DEVICE_PATH", "DRINKS_DEVICE_PATH", "CHICKEN_DEVICE_PATH")
+STATION_ENV_KEYS = {
+    "food": "FOOD_DEVICE_PATH",
+    "drinks": "DRINKS_DEVICE_PATH",
+    "chicken": "CHICKEN_DEVICE_PATH",
+}
+
+
+def parse_device_order(raw_order: str) -> tuple[str, ...]:
+    parts = [part.strip() for part in raw_order.split(",") if part.strip()]
+    if not parts:
+        raise argparse.ArgumentTypeError("order must include at least one station")
+
+    order: list[str] = []
+    for part in parts:
+        env_key = STATION_ENV_KEYS.get(part.lower(), part.upper())
+        if env_key not in DEVICE_ENV_KEYS:
+            valid = ", ".join((*STATION_ENV_KEYS, *DEVICE_ENV_KEYS))
+            raise argparse.ArgumentTypeError(
+                f"unknown station/env key {part!r}; expected one of: {valid}"
+            )
+        if env_key in order:
+            raise argparse.ArgumentTypeError(f"duplicate station/env key: {part}")
+        order.append(env_key)
+
+    return tuple(order)
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Find *-event-kbd devices in ls output and write FOOD_DEVICE_PATH "
-            "and DRINKS_DEVICE_PATH into .env."
+            "Find *-event-kbd devices in ls output and write FOOD_DEVICE_PATH, "
+            "DRINKS_DEVICE_PATH, and CHICKEN_DEVICE_PATH into .env."
         )
     )
     parser.add_argument(
@@ -67,7 +93,20 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--swap",
         action="store_true",
-        help="Swap the first two detected keyboard devices before writing .env.",
+        help=(
+            "Swap the first two detected keyboard devices before applying --order. "
+            "Kept for older two-keypad Food/Drinks setups."
+        ),
+    )
+    parser.add_argument(
+        "--order",
+        type=parse_device_order,
+        default=DEVICE_ENV_KEYS,
+        metavar="ORDER",
+        help=(
+            "Comma-separated assignment order for detected keyboard devices. "
+            "Accepts station names or env keys. Default: food,drinks,chicken."
+        ),
     )
     parser.add_argument(
         "--dry-run",
@@ -268,11 +307,9 @@ def main() -> int:
         )
         return 1
 
-    device_values = {
-        DEVICE_ENV_KEYS[0]: keyboard_paths[0],
-        DEVICE_ENV_KEYS[1]: keyboard_paths[1] if len(keyboard_paths) > 1 else "",
-        DEVICE_ENV_KEYS[2]: keyboard_paths[2] if len(keyboard_paths) > 2 else "",
-    }
+    device_values = dict.fromkeys(DEVICE_ENV_KEYS, "")
+    for env_key, keyboard_path in zip(args.order, keyboard_paths):
+        device_values[env_key] = keyboard_path
 
     lines = load_env_lines(args.env_file, args.example_file)
     lines = append_missing_defaults(lines)
@@ -300,8 +337,8 @@ def main() -> int:
         f"{DEVICE_ENV_KEYS[2]}={device_values[DEVICE_ENV_KEYS[2]]}",
         file=summary_stream,
     )
-    if len(keyboard_paths) > len(DEVICE_ENV_KEYS):
-        extras = ", ".join(keyboard_paths[len(DEVICE_ENV_KEYS) :])
+    if len(keyboard_paths) > len(args.order):
+        extras = ", ".join(keyboard_paths[len(args.order) :])
         print(f"Ignored extra keyboard devices: {extras}", file=summary_stream)
 
     return 0

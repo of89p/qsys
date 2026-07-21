@@ -51,22 +51,12 @@
       <p>Made by company XYZ &bull; Contact us at [Insert Phone Number]</p>
     </footer>
 
-    <!-- Notification Sound -->
-    <button
-      id="sound-enable"
-      class="fixed bottom-6 right-6 z-10 block cursor-pointer rounded border-0 bg-white px-[22px] py-4 text-xl font-extrabold text-black"
-      type="button"
-    >
-      Enable Sound
-    </button>
-
     <script>
       ;(() => {
-        // Dummy data for layout preview
         const state = {
-          drinks: ["012", "015", "018"],
-          chicken: ["042", "049"],
-          food: ["088", "091", "095", "099"],
+          drinks: [],
+          chicken: [],
+          food: [],
           mode: "FOOD",
           dingId: null,
         }
@@ -75,7 +65,6 @@
         let audioContext = null
         let activeDingNodes = null
         let dingStopTimer = null
-        let soundEnabled = true
 
         // 1. RENDER FUNCTION (Updates the screen)
         function render() {
@@ -108,7 +97,6 @@
           const AudioContextClass =
             window.AudioContext || window.webkitAudioContext
           if (!AudioContextClass) {
-            showSoundEnable()
             console.error("AudioContext is not supported by this browser.")
             return
           }
@@ -118,9 +106,6 @@
           }
 
           const start = () => {
-            hideSoundEnable()
-            soundEnabled = true
-
             const now = audioContext.currentTime
             const gain = audioContext.createGain()
             const lowTone = audioContext.createOscillator()
@@ -155,14 +140,12 @@
               .resume()
               .then(() => {
                 if (audioContext.state !== "running") {
-                  showSoundEnable()
                   console.error("Ding playback is still blocked.")
                   return
                 }
                 start()
               })
               .catch((err) => {
-                showSoundEnable()
                 console.error("Ding playback blocked", err)
               })
             return
@@ -189,30 +172,11 @@
           }
         }
 
-        function showSoundEnable() {
-          document.getElementById("sound-enable").classList.remove("hidden")
-        }
-
-        function hideSoundEnable() {
-          document.getElementById("sound-enable").classList.add("hidden")
-        }
-
-        document
-          .getElementById("sound-enable")
-          .addEventListener("click", () => {
-            playDing()
-          })
-
         // 2. VIEWER LOGIC: TV receives state updates from the Pi over SSE
         function applyState(data) {
           const dingId = data.ding_id ?? 0
           if (state.dingId !== null && dingId !== state.dingId) {
-            if (true) {
-              playDing()
-            } else {
-              showSoundEnable()
-              console.error("Sound is not enabled yet.")
-            }
+            playDing()
           }
 
           state.drinks = data.drinks
