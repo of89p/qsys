@@ -1,0 +1,16 @@
+[Unit]
+Description=QSys queue web server
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User={{QSYS_USER}}
+WorkingDirectory={{QSYS_ROOT}}
+Environment=PYTHONUNBUFFERED=1
+ExecStart={{QSYS_PYTHON}} {{QSYS_ROOT}}/app/server.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
