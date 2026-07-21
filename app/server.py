@@ -33,6 +33,13 @@ state_changed = threading.Condition()
 MAX_VISIBLE_ORDERS = 3
 
 
+def add_no_cache_headers(response):
+    response.headers["Cache-Control"] = "no-store, max-age=0, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
+
 def state_snapshot():
     return {
         "drinks": list(state["drinks"]),
@@ -51,8 +58,7 @@ def sse_event(event_name, data):
 @app.route("/")
 def index():
     response = make_response(send_from_directory(APP_DIR, "index.html"))
-    response.headers["Cache-Control"] = "no-store, max-age=0"
-    return response
+    return add_no_cache_headers(response)
 
 
 # State snapshot endpoint, useful for manual checks.
@@ -60,8 +66,7 @@ def index():
 def get_state():
     with state_changed:
         response = jsonify(state_snapshot())
-    response.headers["Cache-Control"] = "no-store, max-age=0"
-    return response
+    return add_no_cache_headers(response)
 
 
 @app.route("/api/events", methods=["GET"])
@@ -90,7 +95,9 @@ def stream_state():
             yield sse_event("state", snapshot)
 
     response = Response(event_stream(), mimetype="text/event-stream")
-    response.headers["Cache-Control"] = "no-cache"
+    response.headers["Cache-Control"] = "no-cache, no-store, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
     response.headers["Connection"] = "keep-alive"
     response.headers["X-Accel-Buffering"] = "no"
     return response

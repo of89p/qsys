@@ -100,6 +100,7 @@
           flashDingId: null,
         }
         const DING_SOUND_URL = "/static/freesound_community-ding-dong-81717.mp3"
+        const AUTO_RELOAD_INTERVAL_MS = 300000
         const dingAudio = new Audio(DING_SOUND_URL)
         dingAudio.preload = "auto"
 
@@ -190,6 +191,11 @@
         } else {
           console.error("This browser does not support server-sent events.")
         }
+
+        // Refresh periodically so long-running displays pick up fresh assets.
+        setInterval(() => {
+          window.location.reload()
+        }, AUTO_RELOAD_INTERVAL_MS)
 
         render()
       })()
