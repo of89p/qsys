@@ -60,11 +60,10 @@
           mode: "FOOD",
           dingId: null,
         }
-        const DING_CUTOFF_MS = 750
-        const DING_CUTOFF_SECONDS = DING_CUTOFF_MS / 1000
-        let audioContext = null
-        let activeDingNodes = null
-        let dingStopTimer = null
+        const DING_SOUND_URL =
+          "/static/freesound_community-ding-dong-81717.mp3"
+        const dingAudio = new Audio(DING_SOUND_URL)
+        dingAudio.preload = "auto"
 
         // 1. RENDER FUNCTION (Updates the screen)
         function render() {
@@ -92,83 +91,18 @@
         }
 
         function playDing() {
-          stopDing()
-
-          const AudioContextClass =
-            window.AudioContext || window.webkitAudioContext
-          if (!AudioContextClass) {
-            console.error("AudioContext is not supported by this browser.")
-            return
+          dingAudio.pause()
+          try {
+            dingAudio.currentTime = 0
+          } catch (err) {
+            console.error("Unable to rewind ding sound", err)
           }
 
-          if (audioContext === null) {
-            audioContext = new AudioContextClass()
-          }
-
-          const start = () => {
-            const now = audioContext.currentTime
-            const gain = audioContext.createGain()
-            const lowTone = audioContext.createOscillator()
-            const highTone = audioContext.createOscillator()
-
-            lowTone.type = "triangle"
-            highTone.type = "sine"
-            lowTone.frequency.setValueAtTime(880, now)
-            highTone.frequency.setValueAtTime(1320, now)
-
-            gain.gain.setValueAtTime(0.0001, now)
-            gain.gain.exponentialRampToValueAtTime(0.7, now + 0.02)
-            gain.gain.exponentialRampToValueAtTime(
-              0.0001,
-              now + DING_CUTOFF_SECONDS,
-            )
-
-            lowTone.connect(gain)
-            highTone.connect(gain)
-            gain.connect(audioContext.destination)
-
-            activeDingNodes = { lowTone, highTone, gain }
-            lowTone.start(now)
-            highTone.start(now)
-            lowTone.stop(now + DING_CUTOFF_SECONDS)
-            highTone.stop(now + DING_CUTOFF_SECONDS)
-            dingStopTimer = setTimeout(stopDing, DING_CUTOFF_MS)
-          }
-
-          if (audioContext.state === "suspended") {
-            audioContext
-              .resume()
-              .then(() => {
-                if (audioContext.state !== "running") {
-                  console.error("Ding playback is still blocked.")
-                  return
-                }
-                start()
-              })
-              .catch((err) => {
-                console.error("Ding playback blocked", err)
-              })
-            return
-          }
-
-          start()
-        }
-
-        function stopDing() {
-          if (dingStopTimer !== null) {
-            clearTimeout(dingStopTimer)
-            dingStopTimer = null
-          }
-
-          if (activeDingNodes !== null) {
-            try {
-              activeDingNodes.lowTone.stop()
-              activeDingNodes.highTone.stop()
-            } catch (err) {}
-            activeDingNodes.lowTone.disconnect()
-            activeDingNodes.highTone.disconnect()
-            activeDingNodes.gain.disconnect()
-            activeDingNodes = null
+          const playPromise = dingAudio.play()
+          if (playPromise !== undefined) {
+            playPromise.catch((err) => {
+              console.error("Ding playback blocked", err)
+            })
           }
         }
 
