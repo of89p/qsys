@@ -5,6 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Order Queue System</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @keyframes latest-number-flash {
+        0%,
+        49% {
+          color: #ef4444;
+        }
+        50%,
+        100% {
+          color: #facc15;
+        }
+      }
+
+      .latest-number-flash {
+        animation: latest-number-flash 1s steps(1, end) 10;
+      }
+    </style>
   </head>
   <body
     class="flex h-screen flex-col overflow-hidden bg-black font-sans text-white"
@@ -59,6 +75,8 @@
           food: [],
           mode: "FOOD",
           dingId: null,
+          flashStation: null,
+          flashDingId: null,
         }
         const DING_SOUND_URL =
           "/static/freesound_community-ding-dong-81717.mp3"
@@ -66,6 +84,19 @@
         dingAudio.preload = "auto"
 
         // 1. RENDER FUNCTION (Updates the screen)
+        function numberClass(station, index) {
+          const isTopNumber = index === 0
+          const isLatestCall =
+            isTopNumber &&
+            state.flashStation === station &&
+            state.flashDingId === state.dingId
+          const baseClass = isTopNumber
+            ? "text-9xl leading-none font-extrabold text-yellow-400"
+            : "text-8xl leading-[1.1] font-bold text-white opacity-80"
+
+          return isLatestCall ? `${baseClass} latest-number-flash` : baseClass
+        }
+
         function render() {
           const dList = document.getElementById("drinks-list")
           const cList = document.getElementById("chicken-list")
@@ -73,19 +104,19 @@
           dList.innerHTML = state.drinks
             .map(
               (n, i) =>
-                `<div class="${i === 0 ? "text-9xl leading-none font-extrabold text-yellow-400" : "text-8xl leading-[1.1] font-bold text-white opacity-80"}">${n}</div>`,
+                `<div class="${numberClass("DRINKS", i)}">${n}</div>`,
             )
             .join("")
           cList.innerHTML = state.chicken
             .map(
               (n, i) =>
-                `<div class="${i === 0 ? "text-9xl leading-none font-extrabold text-yellow-400" : "text-8xl leading-[1.1] font-bold text-white opacity-80"}">${n}</div>`,
+                `<div class="${numberClass("CHICKEN", i)}">${n}</div>`,
             )
             .join("")
           fList.innerHTML = state.food
             .map(
               (n, i) =>
-                `<div class="${i === 0 ? "text-9xl leading-none font-extrabold text-yellow-400" : "text-8xl leading-[1.1] font-bold text-white opacity-80"}">${n}</div>`,
+                `<div class="${numberClass("FOOD", i)}">${n}</div>`,
             )
             .join("")
         }
@@ -111,6 +142,8 @@
           const dingId = data.ding_id ?? 0
           if (state.dingId !== null && dingId !== state.dingId) {
             playDing()
+            state.flashStation = data.mode
+            state.flashDingId = dingId
           }
 
           state.drinks = data.drinks
