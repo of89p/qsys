@@ -1,36 +1,39 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# QSys Frontend
 
-## Getting Started
+This is the Next.js App Router runtime for QSys. It serves the kiosk display at
+`/` and the BFF API under `/api/v1`.
 
-First, run the development server:
+## Development
+
+Run from this directory:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install --frozen-lockfile
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Next is configured to load the repo-root `.env` during local dev and build.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Production Build
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+pnpm build
+pnpm start
+```
 
-## Learn More
+`pnpm build` creates the standalone Next server and copies `public/` plus
+`/.next/static` assets into `.next/standalone`, which is the directory used by
+`qsys-server.service`.
 
-To learn more about Next.js, take a look at the following resources:
+The production server reads these runtime env vars from the root `.env` or
+systemd environment:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `HOSTNAME`
+- `PORT`
+- `NODE_ENV`
+- `NEXT_TELEMETRY_DISABLED`
+- `NODE_OPTIONS`
+- `QSYS_MAX_VISIBLE_ORDERS`
+- `QSYS_FLASH_DURATION_MS`
+- `QSYS_SSE_HEARTBEAT_MS`
+- `QSYS_AUTO_RELOAD_INTERVAL_MS`

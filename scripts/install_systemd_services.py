@@ -46,6 +46,11 @@ def parse_args() -> argparse.Namespace:
         help="Python executable for the services. Default: .venv/bin/python, then python3.",
     )
     parser.add_argument(
+        "--node",
+        type=Path,
+        help="Node executable for the Next.js server. Default: node from PATH.",
+    )
+    parser.add_argument(
         "--env-file",
         type=Path,
         help="Environment file for the interceptor. Default: <root>/.env.",
@@ -138,6 +143,17 @@ def python_path(root: Path, explicit_python: Path | None) -> Path:
     raise RuntimeError("Could not find Python. Create .venv or pass --python.")
 
 
+def node_path(explicit_node: Path | None) -> Path:
+    if explicit_node:
+        return resolved(explicit_node)
+
+    node = shutil.which("node")
+    if node:
+        return Path(node).resolve()
+
+    raise RuntimeError("Could not find Node. Install Node >= 20.9 or pass --node.")
+
+
 def reject_whitespace(label: str, value: str) -> None:
     if any(character.isspace() for character in value):
         raise RuntimeError(
@@ -160,12 +176,14 @@ def rendered_services(
     root: Path,
     user: str,
     python: Path,
+    node: Path,
     env_file: Path,
 ) -> dict[str, str]:
     replacements = {
         "QSYS_USER": user,
         "QSYS_ROOT": str(root),
         "QSYS_PYTHON": str(python),
+        "QSYS_NODE": str(node),
         "QSYS_ENV_FILE": str(env_file),
     }
 
@@ -296,8 +314,10 @@ def main() -> int:
         user = service_user(args.user)
         root = resolved(args.root)
         python = python_path(root, args.python)
+        node = node_path(args.node)
         env_file = resolved(args.env_file) if args.env_file else root / ".env"
         device_dir = resolved(args.device_dir)
+        standalone_server = root / "frontend" / ".next" / "standalone" / "server.js"
 
         if needs_root(args) and os.geteuid() != 0:
             raise RuntimeError(
@@ -310,8 +330,14 @@ def main() -> int:
             raise RuntimeError(f"QSys root does not exist: {root}")
         if not python.exists():
             raise RuntimeError(f"Python executable does not exist: {python}")
+        if not node.exists():
+            raise RuntimeError(f"Node executable does not exist: {node}")
+        if not args.dry_run and not standalone_server.exists():
+            raise RuntimeError(
+                "Missing Next.js standalone build. Run: cd frontend && pnpm build"
+            )
 
-        services = rendered_services(root, user, python, env_file)
+        services = rendered_services(root, user, python, node, env_file)
 
         if not args.skip_env:
             update_env_file(

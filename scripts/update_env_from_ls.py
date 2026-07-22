@@ -16,16 +16,6 @@ EXCLUDED_DEVICE_PATHS = (
     Path("/dev/input/by-id/usb-Logitech_USB_Keyboard-event-kbd"),
 )
 
-DEFAULT_ENV_VALUES = {
-    "PYTHONUNBUFFERED": "1",
-    "QSYS_LOG_LEVEL": "INFO",
-    "QSYS_QUEUE_URL": "http://127.0.0.1:8080/api/queue",
-    "QSYS_ACCEPT_ROW_DIGITS": "0",
-    "FOOD_DEVICE_PATH": "",
-    "DRINKS_DEVICE_PATH": "",
-    "CHICKEN_DEVICE_PATH": "",
-}
-
 DEVICE_ENV_KEYS = ("FOOD_DEVICE_PATH", "DRINKS_DEVICE_PATH", "CHICKEN_DEVICE_PATH")
 STATION_ENV_KEYS = {
     "food": "FOOD_DEVICE_PATH",
@@ -224,27 +214,6 @@ def env_key(line: str) -> str | None:
     return key or None
 
 
-def has_key(lines: list[str], key: str) -> bool:
-    return any(env_key(line) == key for line in lines)
-
-
-def append_missing_defaults(lines: list[str]) -> list[str]:
-    missing = [
-        (key, value)
-        for key, value in DEFAULT_ENV_VALUES.items()
-        if not has_key(lines, key)
-    ]
-    if not missing:
-        return lines
-
-    updated = list(lines)
-    if updated and updated[-1].strip():
-        updated.append("")
-    for key, value in missing:
-        updated.append(f"{key}={value}")
-    return updated
-
-
 def set_env_values(lines: list[str], values: dict[str, str]) -> list[str]:
     updated: list[str] = []
     written: set[str] = set()
@@ -312,7 +281,6 @@ def main() -> int:
         device_values[env_key] = keyboard_path
 
     lines = load_env_lines(args.env_file, args.example_file)
-    lines = append_missing_defaults(lines)
     lines = set_env_values(lines, device_values)
     env_text = build_env_text(lines)
 

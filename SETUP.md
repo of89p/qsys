@@ -6,74 +6,68 @@ source code.
 ## What You Need
 
 - Raspberry Pi OS or another Linux system with systemd
+- Node.js 20.9 or newer
+- pnpm
 - Python 3.12 or newer
 - `curl` or `wget` for installing `uv`
-- Network access from the TV/browser to the Pi
 - Up to three USB keyboard/keypad receivers
 - The QSys source code copied or cloned onto the Pi
 
-## 0. Setting up the Pi
-0.1. Plug in the USB devices: Food, Drinks, and Chicken keypads, plus the dev
-keyboard if you are using one.
+## 0. Prepare The Pi
 
-0.2. Connect to Wifi
-First, list all available Wi-Fi networks by typing:
+Plug in the Food, Drinks, and Chicken keypads, plus a dev keyboard if needed.
+
+Connect to Wi-Fi:
+
 ```bash
 nmcli device wifi list
-```
-
-Note theexact name (SSID) of your network, then connect using this command (replace `YOUR_SSID` and `YOUR_PASSWORD` with your actual network details):
-```bash
 nmcli device wifi connect "YOUR_SSID" password "YOUR_PASSWORD"
 ```
 
-0.3 Update linux and install git if not already installed.
+Update Linux and install Git:
+
 ```bash
 sudo apt update
 sudo apt install -y git
 git --version
 ```
 
-## 1. Get The Source
+Install Node.js 20.9 or newer and enable pnpm with Corepack:
 
+```bash
+node --version
+corepack enable
+corepack prepare pnpm@latest --activate
+pnpm --version
+```
+
+If `node --version` is older than 20.9, install a newer Node release before
+continuing.
+
+## 1. Get The Source
 
 ```bash
 git clone https://github.com/of89p/qsys.git
 cd qsys
 ```
 
-## 2. Install uv
+## 2. Install Python Dependencies
 
-Install `uv` with the official standalone installer from the
-[uv installation docs](https://docs.astral.sh/uv/getting-started/installation/):
+Install `uv`:
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-
-If `curl` is not installed, use `wget`:
-
-```bash
-wget -qO- https://astral.sh/uv/install.sh | sh
-```
-
-The installer usually places `uv` in `~/.local/bin`. Start a new shell, or make
-it available in the current shell:
-
-```bash
 export PATH="$HOME/.local/bin:$PATH"
 uv --version
 ```
 
-## 3. Install Python Dependencies
-
-Use `uv` from the project directory:
+Install the interceptor dependencies:
 
 ```bash
 uv sync
 ```
 
-Or use standard Python tooling:
+If you are not using `uv`:
 
 ```bash
 python3.12 -m venv .venv
@@ -81,28 +75,31 @@ python3.12 -m venv .venv
 pip install -r requirements.txt
 ```
 
-The service installer prefers `.venv/bin/python` when it exists.
+## 3. Install And Build The Frontend
+
+```bash
+cd frontend
+pnpm install --frozen-lockfile
+pnpm build
+cd ..
+```
+
+The build creates the standalone Next.js server used by `qsys-server.service`.
 
 ## 4. Plug In Keypads
 
-Plug in the Food, Drinks, and Chicken keypads you plan to use. Check that Linux
-can see the input devices:
+Check that Linux can see the input devices:
 
 ```bash
 ls -l /dev/input/by-path/
 ```
 
-The useful entries are the ones ending in `-event-kbd`.
-`/dev/input/by-path` is used because it identifies the USB port path, which is
-more useful than `/dev/input/by-id` when multiple keypads are the same brand.
-If you prefer the old brand/device-id paths, pass
-`--device-dir /dev/input/by-id` to `scripts/update_env_from_ls.py` or
-`scripts/install_systemd_services.py`.
-The setup scripts ignore `/dev/input/by-id/usb-Keychron_Keychron_K6-event-kbd`
-because that keyboard is reserved as the dev keyboard. When scanning
-`/dev/input/by-path`, the matching by-path symlink is ignored too.
+The useful entries are the ones ending in `-event-kbd`. `/dev/input/by-path`
+is used because it identifies the USB port path, which is more stable when
+multiple keypads are the same brand.
 
 ## 5. Install Services
+
 Run the installer from the project directory:
 
 ```bash
@@ -114,8 +111,8 @@ The installer:
 - Detects this checkout path.
 - Detects the Linux user that should run the services.
 - Uses `.venv/bin/python` when available.
-- Generates `.env` from `/dev/input/by-path` with Food, Drinks, and Chicken
-  keypad paths.
+- Detects `node` from `PATH`.
+- Generates `.env` from `/dev/input/by-path`.
 - Renders and installs the systemd services.
 - Adds the service user to the `input` group.
 - Enables and restarts both services.
@@ -133,7 +130,8 @@ For a nonstandard install, pass explicit values:
 sudo python3 scripts/install_systemd_services.py \
   --user pi \
   --root /home/pi/qsys \
-  --python /home/pi/qsys/.venv/bin/python
+  --python /home/pi/qsys/.venv/bin/python \
+  --node /usr/bin/node
 ```
 
 Preview the generated service files without changing the system:
@@ -144,8 +142,8 @@ python3 scripts/install_systemd_services.py --dry-run
 
 ## 6. Set Up The Pi Display Browser
 
-For the Pi display, autostart Chromium in kiosk mode with a dedicated local
-profile and the autoplay policy required for the notification sound:
+Autostart Chromium in kiosk mode with a dedicated local profile and the autoplay
+policy required for the notification sound:
 
 ```bash
 mkdir -p ~/.config/qsys-chromium
@@ -156,14 +154,23 @@ nano ~/.config/labwc/autostart
 Add this line:
 
 ```bash
-chromium --kiosk --user-data-dir="$HOME/.config/qsys-chromium" --autoplay-policy=no-user-gesture-required --noerrdialogs --disable-infobars --no-first-run --start-maximized http://127.0.0.1:8080 &
+chromium --kiosk --user-data-dir="$HOME/.config/qsys-chromium" --autoplay-policy=no-user-gesture-required --noerrdialogs --disable-infobars --no-first-run --start-maximized --force-device-scale-factor=1 http://127.0.0.1:8080/ &
 ```
 
-If the command is named `chromium-browser` on your Pi, use that in the
-autostart line instead of `chromium`.
+If the command is named `chromium-browser` on your Pi, use that instead of
+`chromium`.
 
-Each Pi should have its own local profile directory. You do not need to copy a
-profile between Pis; Chromium creates the profile automatically on first launch.
+If the display appears zoomed in or out, reset the dedicated kiosk profile once
+and restart Chromium:
+
+```bash
+rm -rf ~/.config/qsys-chromium
+mkdir -p ~/.config/qsys-chromium
+```
+
+The `--force-device-scale-factor=1` flag keeps Chromium at a 100% device scale.
+If the page still appears incorrectly sized after resetting the profile, check
+the Raspberry Pi OS display scaling settings.
 
 ## 7. Check The Display
 
@@ -179,19 +186,15 @@ Open this URL from the TV or another browser on the same network:
 http://<pi-ip-address>:8080/
 ```
 
-## 8. Test Without A Keypad
-
 Submit a food queue number manually:
 
 ```bash
-curl -X POST http://127.0.0.1:8080/api/queue \
+curl -X POST http://127.0.0.1:8080/api/v1/queue \
   -H 'Content-Type: application/json' \
   -d '{"station":"food","number":"12"}'
 ```
 
 The display should show `012`.
-
-The valid `station` values are `drinks`, `chicken`, and `food`.
 
 ## Keypad Assignment
 
@@ -205,24 +208,15 @@ CHICKEN_DEVICE_PATH=/dev/input/by-path/<chicken-keypad-event-kbd>
 
 By default, the first detected `*-event-kbd` device becomes `FOOD_DEVICE_PATH`,
 the second becomes `DRINKS_DEVICE_PATH`, and the third becomes
-`CHICKEN_DEVICE_PATH`.
-The generated paths normally begin with `/dev/input/by-path/`. Keep each keypad
-plugged into the same USB port so those assignments stay stable.
-The Keychron dev keyboard is excluded automatically and will not be assigned to
-Food, Drinks, or Chicken.
-
-For a full three-keypad setup, regenerate `.env` with an explicit assignment
-order and restart the interceptor:
+`CHICKEN_DEVICE_PATH`. Use an explicit assignment order when needed:
 
 ```bash
 python3 scripts/update_env_from_ls.py --order food,drinks,chicken
 sudo systemctl restart qsys-interceptor.service
 ```
 
-Use the station order that matches the `ls -l /dev/input/by-path/` output. For
-older two-keypad Food/Drinks setups, `--swap` still swaps the first two detected
-devices. If fewer than three keypads are connected, the remaining device path
-variables stay empty.
+Use `--device-dir /dev/input/by-id` if you prefer device-id paths. Use `--swap`
+for older two-keypad Food/Drinks setups.
 
 ## Service Commands
 
@@ -233,7 +227,7 @@ systemctl status qsys-server.service
 systemctl status qsys-interceptor.service
 ```
 
-View logs:
+View logs from journald:
 
 ```bash
 journalctl -u qsys-server.service -f
@@ -261,16 +255,15 @@ From the project directory:
 ```bash
 git pull
 uv sync
+cd frontend
+pnpm install --frozen-lockfile
+pnpm build
+cd ..
 sudo python3 scripts/install_systemd_services.py
 ```
 
-If you are not using `uv`, reinstall dependencies in the virtual environment:
-
-```bash
-. .venv/bin/activate
-pip install -r requirements.txt
-sudo python3 scripts/install_systemd_services.py
-```
+If you are not using `uv`, reinstall dependencies in the virtual environment
+before rerunning the service installer.
 
 ## Troubleshooting
 
@@ -308,8 +301,8 @@ sudo usermod -aG input "$USER"
 sudo systemctl restart qsys-interceptor.service
 ```
 
-If port `8080` is already in use, stop the other process or change the port in
-`app/server.py`.
+If port `8080` is already in use, stop the other process or change `PORT` in
+the root `.env`.
 
 ## Uninstall Services
 
