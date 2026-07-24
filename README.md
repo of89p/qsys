@@ -144,17 +144,19 @@ keyboards so they are not assigned to a station.
 ## Install As System Services
 
 The service templates are in `systemd/`. Build the frontend first, then install
-the services:
+the kiosk autostart and services:
 
 ```bash
 cd frontend
 pnpm build
 cd ..
-sudo python3 scripts/install_systemd_services.py
+sudo python3 scripts/install.py
 ```
 
-The installer detects this checkout path, the service user, Python, Node, and
-the root `.env` file. It renders and installs:
+The installer updates keypad paths in `.env`, configures Chromium autostart for
+the Pi display, then delegates to `scripts/install_systemd_services.py`. It
+detects this checkout path, the service user, Python, Node, and the root `.env`
+file. It renders and installs:
 
 ```text
 qsys-server.service
@@ -164,17 +166,22 @@ qsys-interceptor.service
 For a nonstandard install, pass explicit values:
 
 ```bash
-sudo python3 scripts/install_systemd_services.py \
+sudo python3 scripts/install.py \
   --user pi \
   --root /home/pi/qsys \
+  --chromium-command chromium-browser \
+  -- \
   --python /home/pi/qsys/.venv/bin/python \
   --node /usr/bin/node
 ```
 
+Use `scripts/install_systemd_services.py` directly when you only want to update
+systemd services and leave Chromium autostart untouched.
+
 Preview without changing the system:
 
 ```bash
-python3 scripts/install_systemd_services.py --dry-run
+python3 scripts/install.py --dry-run
 ```
 
 ## Configuration

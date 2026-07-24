@@ -16,7 +16,6 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_INSTALL_DIR = Path("/etc/systemd/system")
-DEFAULT_DEVICE_DIR = Path("/dev/input/by-path")
 SERVICE_NAMES = ("qsys-server.service", "qsys-interceptor.service")
 
 
@@ -53,33 +52,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--env-file",
         type=Path,
-        help="Environment file for the interceptor. Default: <root>/.env.",
-    )
-    parser.add_argument(
-        "--device-dir",
-        type=Path,
-        default=DEFAULT_DEVICE_DIR,
-        help="Input device directory used to generate .env. Default: /dev/input/by-path.",
-    )
-    parser.add_argument(
-        "--device-order",
-        default="food,drinks,chicken",
-        metavar="ORDER",
-        help=(
-            "Comma-separated station order passed to update_env_from_ls.py when "
-            "assigning detected keypads. Default: food,drinks,chicken."
-        ),
+        help="Environment file loaded by the services. Default: <root>/.env.",
     )
     parser.add_argument(
         "--install-dir",
         type=Path,
         default=DEFAULT_INSTALL_DIR,
         help="Where rendered service files should be written. Default: /etc/systemd/system.",
-    )
-    parser.add_argument(
-        "--skip-env",
-        action="store_true",
-        help="Do not generate or update .env from the input device directory.",
     )
     parser.add_argument(
         "--no-input-group",
@@ -220,46 +199,6 @@ def run(command: list[str], dry_run: bool) -> None:
     subprocess.run(command, check=True)
 
 
-def update_env_file(
-    root: Path,
-    env_file: Path,
-    device_dir: Path,
-    device_order: str,
-    user: str,
-    dry_run: bool,
-) -> None:
-    script = root / "scripts" / "update_env_from_ls.py"
-    command = [
-        sys.executable,
-        str(script),
-        "--env-file",
-        str(env_file),
-        "--example-file",
-        str(root / ".env.example"),
-        "--device-dir",
-        str(device_dir),
-        "--order",
-        device_order,
-    ]
-
-    if dry_run:
-        print("+ " + shlex.join(command))
-        return
-
-    result = subprocess.run(command, check=False)
-    if result.returncode != 0:
-        print(
-            f"Warning: could not update .env from {device_dir}. "
-            "You can rerun scripts/update_env_from_ls.py after plugging in keypads.",
-            file=sys.stderr,
-        )
-        return
-
-    if env_file.exists() and os.geteuid() == 0:
-        user_info = pwd.getpwnam(user)
-        os.chown(env_file, user_info.pw_uid, user_info.pw_gid)
-
-
 def ensure_input_group(user: str, dry_run: bool) -> None:
     try:
         input_group = grp.getgrnam("input")
@@ -316,7 +255,6 @@ def main() -> int:
         python = python_path(root, args.python)
         node = node_path(args.node)
         env_file = resolved(args.env_file) if args.env_file else root / ".env"
-        device_dir = resolved(args.device_dir)
         standalone_server = root / "frontend" / ".next" / "standalone" / "server.js"
 
         if needs_root(args) and os.geteuid() != 0:
@@ -339,15 +277,6 @@ def main() -> int:
 
         services = rendered_services(root, user, python, node, env_file)
 
-        if not args.skip_env:
-            update_env_file(
-                root,
-                env_file,
-                device_dir,
-                args.device_order,
-                user,
-                args.dry_run,
-            )
         if not args.no_input_group:
             ensure_input_group(user, args.dry_run)
 

@@ -103,13 +103,15 @@ multiple keypads are the same brand.
 Run the installer from the project directory:
 
 ```bash
-sudo python3 scripts/install_systemd_services.py
+sudo python3 scripts/install.py
 ```
 
 The installer:
 
 - Detects this checkout path.
 - Detects the Linux user that should run the services.
+- Updates keypad paths in `.env`.
+- Configures Chromium kiosk autostart idempotently.
 - Uses `.venv/bin/python` when available.
 - Detects `node` from `PATH`.
 - Generates `.env` from `/dev/input/by-path`.
@@ -127,9 +129,11 @@ qsys-interceptor.service
 For a nonstandard install, pass explicit values:
 
 ```bash
-sudo python3 scripts/install_systemd_services.py \
+sudo python3 scripts/install.py \
   --user pi \
   --root /home/pi/qsys \
+  --chromium-command chromium-browser \
+  -- \
   --python /home/pi/qsys/.venv/bin/python \
   --node /usr/bin/node
 ```
@@ -137,28 +141,22 @@ sudo python3 scripts/install_systemd_services.py \
 Preview the generated service files without changing the system:
 
 ```bash
-python3 scripts/install_systemd_services.py --dry-run
+python3 scripts/install.py --dry-run
 ```
 
 ## 6. Set Up The Pi Display Browser
 
-Autostart Chromium in kiosk mode with a dedicated local profile and the autoplay
-policy required for the notification sound:
+`scripts/install.py` writes a managed QSys block into
+`~/.config/labwc/autostart`. Re-running the installer replaces that block
+without duplicating it or changing unrelated autostart entries. The Chromium
+command uses a dedicated local profile, enables notification sound autoplay,
+starts at `http://127.0.0.1:8080/`, and forces 100% device scale.
+
+If the command is named `chromium-browser` on your Pi, rerun the installer with:
 
 ```bash
-mkdir -p ~/.config/qsys-chromium
-mkdir -p ~/.config/labwc
-nano ~/.config/labwc/autostart
+sudo python3 scripts/install.py --chromium-command chromium-browser
 ```
-
-Add this line:
-
-```bash
-chromium --kiosk --user-data-dir="$HOME/.config/qsys-chromium" --autoplay-policy=no-user-gesture-required --noerrdialogs --disable-infobars --no-first-run --start-maximized --force-device-scale-factor=1 http://127.0.0.1:8080/ &
-```
-
-If the command is named `chromium-browser` on your Pi, use that instead of
-`chromium`.
 
 If the display appears zoomed in or out, reset the dedicated kiosk profile once
 and restart Chromium:
@@ -259,7 +257,7 @@ cd frontend
 pnpm install --frozen-lockfile
 pnpm build
 cd ..
-sudo python3 scripts/install_systemd_services.py
+sudo python3 scripts/install.py
 ```
 
 If you are not using `uv`, reinstall dependencies in the virtual environment

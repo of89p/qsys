@@ -251,47 +251,57 @@ def build_env_text(lines: list[str]) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
+def warn(message: str) -> None:
+    print(f"Warning: {message}", file=sys.stderr)
+
+
+def write_env_text(args: argparse.Namespace, lines: list[str]) -> None:
+    env_text = build_env_text(lines)
+
+    if args.dry_run:
+        print(env_text, end="")
+        return
+
+    args.env_file.parent.mkdir(parents=True, exist_ok=True)
+    args.env_file.write_text(env_text)
+    print(f"Wrote {args.env_file}", flush=True)
+
+
 def main() -> int:
     args = parse_args()
+    lines = load_env_lines(args.env_file, args.example_file)
 
     try:
         ls_output = read_ls_output(args)
     except OSError as exc:
-        print(f"Could not read ls output: {exc}", file=sys.stderr)
-        return 1
+        write_env_text(args, lines)
+        warn(f"could not read ls output: {exc}")
+        return 0
     except RuntimeError as exc:
-        print(f"Could not run ls: {exc}", file=sys.stderr)
-        return 1
+        write_env_text(args, lines)
+        warn(f"could not run ls: {exc}")
+        return 0
 
     keyboard_paths = parse_keyboard_paths(ls_output, args.device_dir)
     if args.swap and len(keyboard_paths) >= 2:
         keyboard_paths[0], keyboard_paths[1] = keyboard_paths[1], keyboard_paths[0]
 
     if not keyboard_paths:
-        print(
-            f"No usable *-event-kbd devices found. Run `ls -l {args.device_dir}/` "
+        write_env_text(args, lines)
+        warn(
+            f"no usable *-event-kbd devices found. Run `ls -l {args.device_dir}/` "
             "and confirm the keypad is connected. The Keychron dev keyboard is "
-            "excluded automatically.",
-            file=sys.stderr,
+            "excluded automatically."
         )
-        return 1
+        return 0
 
     device_values = dict.fromkeys(DEVICE_ENV_KEYS, "")
     for env_key, keyboard_path in zip(args.order, keyboard_paths):
         device_values[env_key] = keyboard_path
 
-    lines = load_env_lines(args.env_file, args.example_file)
     lines = set_env_values(lines, device_values)
-    env_text = build_env_text(lines)
-
-    if args.dry_run:
-        print(env_text, end="")
-        summary_stream = sys.stderr
-    else:
-        args.env_file.parent.mkdir(parents=True, exist_ok=True)
-        args.env_file.write_text(env_text)
-        summary_stream = sys.stdout
-        print(f"Wrote {args.env_file}", file=summary_stream)
+    write_env_text(args, lines)
+    summary_stream = sys.stderr if args.dry_run else sys.stdout
 
     print(
         f"{DEVICE_ENV_KEYS[0]}={device_values[DEVICE_ENV_KEYS[0]]}",
