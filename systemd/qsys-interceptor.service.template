@@ -11,7 +11,7 @@ WorkingDirectory={{QSYS_ROOT}}
 Environment=PYTHONUNBUFFERED=1
 Environment=QSYS_LOG_LEVEL=WARNING
 # FOOD_DEVICE_PATH, DRINKS_DEVICE_PATH, and CHICKEN_DEVICE_PATH come from .env,
-# generated from /dev/input/by-path by scripts/update_env_from_ls.py.
+# generated from /dev/input/by-path by scripts/update_keypad_env.py.
 EnvironmentFile=-{{QSYS_ENV_FILE}}
 ExecStart={{QSYS_PYTHON}} -m interceptor
 Restart=always

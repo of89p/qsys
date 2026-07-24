@@ -128,7 +128,7 @@ ls -l /dev/input/by-path/
 Generate or update `.env` from the detected keyboard device paths:
 
 ```bash
-python3 scripts/update_env_from_ls.py
+python3 scripts/update_keypad_env.py
 ```
 
 The first `*-event-kbd` device is written as `FOOD_DEVICE_PATH`; the second is

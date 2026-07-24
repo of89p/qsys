@@ -21,7 +21,7 @@ to the physical USB port path, so repeatability depends on hardware placement.
 
 ```bash
 cd /home/pi/qsys
-python3 scripts/update_env_from_ls.py --order food,drinks,chicken
+python3 scripts/update_keypad_env.py --order food,drinks,chicken
 sudo systemctl restart qsys-interceptor.service
 ```
 
@@ -42,13 +42,13 @@ sudo python3 scripts/install.py
 
 If the keypads were already plugged into their final ports before running
 `sudo python3 scripts/install.py`, `.env` has already been generated. The
-installer calls `scripts/update_env_from_ls.py` through
+installer calls `scripts/update_keypad_env.py` through
 `scripts/install_systemd_services.py` unless `--skip-env` is passed.
 
 If the keypads were plugged in later, moved, or replaced, regenerate `.env`:
 
 ```bash
-python3 scripts/update_env_from_ls.py --order food,drinks,chicken
+python3 scripts/update_keypad_env.py --order food,drinks,chicken
 sudo systemctl restart qsys-interceptor.service
 ```
 
@@ -340,7 +340,7 @@ does not work:
 
 ```bash
 cd /home/pi/qsys
-python3 scripts/update_env_from_ls.py --order food,drinks,chicken
+python3 scripts/update_keypad_env.py --order food,drinks,chicken
 sudo systemctl restart qsys-interceptor.service
 ```
 
@@ -386,7 +386,7 @@ If keypad assignments are wrong, confirm the USB port layout:
 ```bash
 ls -l /dev/input/by-path/
 cd /home/pi/qsys
-python3 scripts/update_env_from_ls.py --order food,drinks,chicken
+python3 scripts/update_keypad_env.py --order food,drinks,chicken
 sudo systemctl restart qsys-interceptor.service
 ```
 

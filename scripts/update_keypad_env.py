@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Update .env keypad paths from `ls -l /dev/input/by-path/` output."""
+"""Populate .env and update keypad input device paths."""
 
 from __future__ import annotations
 
@@ -47,8 +47,9 @@ def parse_device_order(raw_order: str) -> tuple[str, ...]:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Find *-event-kbd devices in ls output and write FOOD_DEVICE_PATH, "
-            "DRINKS_DEVICE_PATH, and CHICKEN_DEVICE_PATH into .env."
+            "Populate .env from .env.example when needed, then update "
+            "FOOD_DEVICE_PATH, DRINKS_DEVICE_PATH, and CHICKEN_DEVICE_PATH "
+            "from detected *-event-kbd devices."
         )
     )
     parser.add_argument(

@@ -70,7 +70,7 @@ def parse_args() -> argparse.Namespace:
         default="food,drinks,chicken",
         metavar="ORDER",
         help=(
-            "Comma-separated station order passed to update_env_from_ls.py when "
+            "Comma-separated station order passed to update_keypad_env.py when "
             "assigning detected keypads. Default: food,drinks,chicken."
         ),
     )
@@ -202,7 +202,7 @@ def configure_chromium_autostart(
 def update_env_command(args: argparse.Namespace, env_file: Path) -> list[str]:
     return [
         sys.executable,
-        str(resolved(args.root) / "scripts" / "update_env_from_ls.py"),
+        str(resolved(args.root) / "scripts" / "update_keypad_env.py"),
         "--env-file",
         str(env_file),
         "--example-file",

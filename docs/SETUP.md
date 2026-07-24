@@ -209,7 +209,7 @@ the second becomes `DRINKS_DEVICE_PATH`, and the third becomes
 `CHICKEN_DEVICE_PATH`. Use an explicit assignment order when needed:
 
 ```bash
-python3 scripts/update_env_from_ls.py --order food,drinks,chicken
+python3 scripts/update_keypad_env.py --order food,drinks,chicken
 sudo systemctl restart qsys-interceptor.service
 ```
 
@@ -287,7 +287,7 @@ ls -l /dev/input/by-path/
 Regenerate `.env` after changing USB receivers:
 
 ```bash
-python3 scripts/update_env_from_ls.py
+python3 scripts/update_keypad_env.py
 sudo systemctl restart qsys-interceptor.service
 ```
 

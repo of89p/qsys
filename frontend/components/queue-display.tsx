@@ -45,11 +45,14 @@ function playDing(audio: HTMLAudioElement) {
   audio.pause();
   try {
     audio.currentTime = 0;
-  } catch {
+  } catch (error) {
+    console.error("Unable to rewind ding sound", error);
     return;
   }
 
-  void audio.play().catch(() => {});
+  void audio.play().catch((error) => {
+    console.error("Ding playback blocked", error);
+  });
 }
 
 function QueueNumber({
@@ -73,6 +76,7 @@ export function QueueDisplay({
     () => new Set(),
   );
   const latestCallIdRef = useRef<number | null>(null);
+  const hasReceivedInitialStateRef = useRef(false);
 
   useEffect(() => {
     const audio = new Audio(DING_SOUND_URL);
@@ -107,16 +111,18 @@ export function QueueDisplay({
       const nextState = JSON.parse(message.data) as QueueState;
       const nextLatestCallId = nextState.latestCall?.callId ?? null;
 
-      if (
-        latestCallIdRef.current !== null &&
+      const shouldNotify =
+        hasReceivedInitialStateRef.current &&
         nextLatestCallId !== null &&
-        nextLatestCallId !== latestCallIdRef.current
-      ) {
+        nextLatestCallId !== latestCallIdRef.current;
+
+      if (shouldNotify) {
         playDing(audio);
         markFlashing(nextLatestCallId);
       }
 
       latestCallIdRef.current = nextLatestCallId;
+      hasReceivedInitialStateRef.current = true;
       setQueueState(nextState);
     });
 
