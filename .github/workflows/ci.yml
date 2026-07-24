@@ -16,6 +16,8 @@ jobs:
   build:
     name: Build and package
     runs-on: ubuntu-latest
+    env:
+      UV_PYTHON_DOWNLOADS: never
 
     steps:
       - name: Check out repository
@@ -29,17 +31,18 @@ jobs:
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 11.5.2
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version-file: ".python-version"
 
-      - name: Install uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8
+        with:
+          version: "0.10.9"
+          enable-cache: true
 
       - name: Install Python dependencies
         run: uv sync --frozen
