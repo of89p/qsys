@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Populate .env and update keypad input device paths."""
+"""Overwrite .env from .env.example and update keypad input device paths."""
 
 from __future__ import annotations
 
@@ -47,7 +47,7 @@ def parse_device_order(raw_order: str) -> tuple[str, ...]:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Populate .env from .env.example when needed, then update "
+            "Overwrite .env from .env.example, then update "
             "FOOD_DEVICE_PATH, DRINKS_DEVICE_PATH, and CHICKEN_DEVICE_PATH "
             "from detected *-event-kbd devices."
         )
@@ -68,7 +68,7 @@ def parse_args() -> argparse.Namespace:
         "--example-file",
         type=Path,
         default=REPO_ROOT / ".env.example",
-        help="Template to copy from when .env does not exist. Default: repo .env.example",
+        help="Template used as the base for every .env write. Default: repo .env.example",
     )
     source = parser.add_mutually_exclusive_group()
     source.add_argument(
@@ -238,10 +238,7 @@ def set_env_values(lines: list[str], values: dict[str, str]) -> list[str]:
     return updated
 
 
-def load_env_lines(env_file: Path, example_file: Path) -> list[str]:
-    if env_file.exists():
-        return env_file.read_text().splitlines()
-
+def load_env_lines(example_file: Path) -> list[str]:
     if example_file.exists():
         return example_file.read_text().splitlines()
 
@@ -270,7 +267,7 @@ def write_env_text(args: argparse.Namespace, lines: list[str]) -> None:
 
 def main() -> int:
     args = parse_args()
-    lines = load_env_lines(args.env_file, args.example_file)
+    lines = load_env_lines(args.example_file)
 
     try:
         ls_output = read_ls_output(args)

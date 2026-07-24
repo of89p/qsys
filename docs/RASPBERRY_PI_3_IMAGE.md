@@ -30,20 +30,16 @@ sudo systemctl restart qsys-interceptor.service
 Start from a Pi 3 that is fully working:
 
 ```bash
+mkdir -p /home/pi/qsys
 cd /home/pi/qsys
-git status
-uv sync
-cd frontend
-pnpm install --frozen-lockfile
-pnpm build
-cd ..
-sudo python3 scripts/install.py
+curl -L -o qsys-release.tar.gz <release-artifact-url>
+tar -xzf qsys-release.tar.gz --strip-components=1
+./install.sh
 ```
 
 If the keypads were already plugged into their final ports before running
-`sudo python3 scripts/install.py`, `.env` has already been generated. The
-installer calls `scripts/update_keypad_env.py` through
-`scripts/install_systemd_services.py` unless `--skip-env` is passed.
+`./install.sh`, `.env` has already been generated. The installer calls
+`scripts/update_keypad_env.py` unless `--skip-env` is passed.
 
 If the keypads were plugged in later, moved, or replaced, regenerate `.env`:
 

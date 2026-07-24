@@ -15,16 +15,27 @@ http://<pi-ip-address>:8080/
 
 - Linux or Raspberry Pi OS
 - Node.js 20.9 or newer
-- pnpm
-- Python 3.12 or newer
+- Python 3.11 or newer
 - Up to three USB keyboard/keypad receivers
 - Network access from the TV/browser to the machine running the server
 
 ## Install
 
-For Raspberry Pi deployment, use [SETUP.md](SETUP.md).
+For Raspberry Pi deployment, use [docs/SETUP.md](docs/SETUP.md). The Pi
+production path uses a release artifact and does not require `git clone`,
+`pnpm install`, or `pnpm build`.
 
-From the project directory:
+From a release artifact on the Pi:
+
+```bash
+mkdir -p ~/qsys
+cd ~/qsys
+curl -L -o qsys-release.tar.gz <release-artifact-url>
+tar -xzf qsys-release.tar.gz --strip-components=1
+./install.sh
+```
+
+For development from a source checkout:
 
 ```bash
 cd /path/to/qsys
@@ -37,7 +48,7 @@ pnpm build
 If you are not using `uv`:
 
 ```bash
-python3.12 -m venv .venv
+python3.11 -m venv .venv
 . .venv/bin/activate
 pip install -r requirements.txt
 ```
@@ -143,20 +154,18 @@ keyboards so they are not assigned to a station.
 
 ## Install As System Services
 
-The service templates are in `systemd/`. Build the frontend first, then install
-the kiosk autostart and services:
+The service templates are in `systemd/`. From a release artifact, install the
+kiosk autostart and services with:
 
 ```bash
-cd frontend
-pnpm build
-cd ..
-sudo python3 scripts/install.py
+./install.sh
 ```
 
-The installer updates keypad paths in `.env`, configures Chromium autostart for
-the Pi display, then delegates to `scripts/install_systemd_services.py`. It
-detects this checkout path, the service user, Python, Node, and the root `.env`
-file. It renders and installs:
+The bootstrap installs Python runtime/build prerequisites, creates `.venv`, then
+delegates to `scripts/install.py`. The installer updates keypad paths in
+`.env`, configures Chromium autostart for the Pi display from the generated
+`PORT`, detects the release root, service user, Python, Node, and `.env`, then
+renders and installs:
 
 ```text
 qsys-server.service
@@ -166,17 +175,21 @@ qsys-interceptor.service
 For a nonstandard install, pass explicit values:
 
 ```bash
-sudo python3 scripts/install.py \
+./install.sh \
   --user pi \
-  --root /home/pi/qsys \
   --chromium-command chromium-browser \
-  -- \
   --python /home/pi/qsys/.venv/bin/python \
   --node /usr/bin/node
 ```
 
-Use `scripts/install_systemd_services.py` directly when you only want to update
-systemd services and leave Chromium autostart untouched.
+Use `scripts/install.py --systemd-only` when you only want to update systemd
+services and leave Chromium autostart and `.env` untouched.
+
+For a source checkout fallback, build the frontend before installing or run:
+
+```bash
+sudo python3 scripts/install.py --build-frontend
+```
 
 Preview without changing the system:
 
@@ -186,8 +199,9 @@ python3 scripts/install.py --dry-run
 
 ## Configuration
 
-The root `.env` file is the canonical runtime configuration. Defaults are
-listed explicitly in `.env.example`.
+The root `.env` file is generated from `.env.example` whenever the installer or
+`scripts/update_keypad_env.py` runs. Defaults are listed explicitly in
+`.env.example`.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
@@ -237,7 +251,8 @@ Queue state is stored in memory, so restarting the server clears the display.
 
 - If the TV cannot load the page, confirm `qsys-server.service` is running and
   open `http://<pi-ip-address>:8080/` from a browser on the same network.
-- If port `8080` is already in use, stop the other process or change `PORT`.
+- If port `8080` is already in use, stop the other process or change `PORT` in
+  `.env.example`, then rerun the installer.
 - If the interceptor reports permission errors, add the service user to the
   `input` group and restart the login session or service.
 - If keypad input does nothing, regenerate `.env` and restart the interceptor.

@@ -1,17 +1,15 @@
 # QSys Raspberry Pi Setup
 
-Use this guide when preparing a Raspberry Pi from a fresh checkout of the QSys
-source code.
+Use this guide when preparing a Raspberry Pi from a QSys release artifact.
 
 ## What You Need
 
 - Raspberry Pi OS or another Linux system with systemd
+- Python 3.11 or newer from the OS package manager
 - Node.js 20.9 or newer
-- pnpm
-- Python 3.12 or newer
-- `curl` or `wget` for installing `uv`
+- `curl` for downloading the release artifact and installing `uv`
 - Up to three USB keyboard/keypad receivers
-- The QSys source code copied or cloned onto the Pi
+- A QSys release tarball from CI or GitHub Releases
 
 ## 0. Prepare The Pi
 
@@ -24,69 +22,36 @@ nmcli device wifi list
 nmcli device wifi connect "YOUR_SSID" password "YOUR_PASSWORD"
 ```
 
-Update Linux and install Git:
+Update Linux and install basic download tools:
 
 ```bash
 sudo apt update
-sudo apt install -y git
-git --version
+sudo apt install -y ca-certificates curl
 ```
 
-Install Node.js 20.9 or newer and enable pnpm with Corepack:
+Install Node.js 20.9 or newer:
 
 ```bash
 node --version
-corepack enable
-corepack prepare pnpm@latest --activate
-pnpm --version
 ```
 
 If `node --version` is older than 20.9, install a newer Node release before
-continuing.
+continuing. The production Pi does not need `pnpm` because it does not build
+the frontend locally.
 
-## 1. Get The Source
-
-```bash
-git clone https://github.com/of89p/qsys.git
-cd qsys
-```
-
-## 2. Install Python Dependencies
-
-Install `uv`:
+## 1. Download The Release
 
 ```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-export PATH="$HOME/.local/bin:$PATH"
-uv --version
+mkdir -p ~/qsys
+cd ~/qsys
+curl -L -o qsys-release.tar.gz <release-artifact-url>
+tar -xzf qsys-release.tar.gz --strip-components=1
 ```
 
-Install the interceptor dependencies:
+The release artifact includes the built Next.js server and the setup scripts.
+It does not include `.env`, Git history, or frontend build tooling.
 
-```bash
-uv sync
-```
-
-If you are not using `uv`:
-
-```bash
-python3.12 -m venv .venv
-. .venv/bin/activate
-pip install -r requirements.txt
-```
-
-## 3. Install And Build The Frontend
-
-```bash
-cd frontend
-pnpm install --frozen-lockfile
-pnpm build
-cd ..
-```
-
-The build creates the standalone Next.js server used by `qsys-server.service`.
-
-## 4. Plug In Keypads
+## 2. Plug In Keypads
 
 Check that Linux can see the input devices:
 
@@ -98,23 +63,26 @@ The useful entries are the ones ending in `-event-kbd`. `/dev/input/by-path`
 is used because it identifies the USB port path, which is more stable when
 multiple keypads are the same brand.
 
-## 5. Install Services
+## 3. Install Services
 
-Run the installer from the project directory:
+Run the bootstrap from the extracted release directory:
 
 ```bash
-sudo python3 scripts/install.py
+./install.sh
 ```
 
-The installer:
+The bootstrap and installer:
 
-- Detects this checkout path.
+- Detects the extracted release path.
 - Detects the Linux user that should run the services.
-- Updates keypad paths in `.env`.
+- Installs Python runtime and build prerequisites when `apt-get` is available.
+- Installs or detects `uv`.
+- Creates `.venv` with runtime Python dependencies.
+- Validates Node.js 20.9 or newer.
+- Overwrites `.env` from `.env.example` and detected `/dev/input/by-path` keypads.
 - Configures Chromium kiosk autostart idempotently.
 - Uses `.venv/bin/python` when available.
 - Detects `node` from `PATH`.
-- Generates `.env` from `/dev/input/by-path`.
 - Renders and installs the systemd services.
 - Adds the service user to the `input` group.
 - Enables and restarts both services.
@@ -129,14 +97,15 @@ qsys-interceptor.service
 For a nonstandard install, pass explicit values:
 
 ```bash
-sudo python3 scripts/install.py \
+./install.sh \
   --user pi \
-  --root /home/pi/qsys \
   --chromium-command chromium-browser \
-  -- \
   --python /home/pi/qsys/.venv/bin/python \
   --node /usr/bin/node
 ```
+
+Use `scripts/install.py --systemd-only` when you only want to update systemd
+services and leave Chromium autostart and `.env` untouched.
 
 Preview the generated service files without changing the system:
 
@@ -144,7 +113,7 @@ Preview the generated service files without changing the system:
 python3 scripts/install.py --dry-run
 ```
 
-## 6. Set Up The Pi Display Browser
+## 4. Set Up The Pi Display Browser
 
 `scripts/install.py` writes a managed QSys block into
 `~/.config/labwc/autostart`. Re-running the installer replaces that block
@@ -155,7 +124,7 @@ starts at `http://127.0.0.1:8080/`, and forces 100% device scale.
 If the command is named `chromium-browser` on your Pi, rerun the installer with:
 
 ```bash
-sudo python3 scripts/install.py --chromium-command chromium-browser
+./install.sh --chromium-command chromium-browser
 ```
 
 If the display appears zoomed in or out, reset the dedicated kiosk profile once
@@ -170,7 +139,7 @@ The `--force-device-scale-factor=1` flag keeps Chromium at a 100% device scale.
 If the page still appears incorrectly sized after resetting the profile, check
 the Raspberry Pi OS display scaling settings.
 
-## 7. Check The Display
+## 5. Check The Display
 
 Find the Pi IP address:
 
@@ -248,10 +217,26 @@ sudo systemctl stop qsys-server.service
 
 ## Updating A Pi
 
-From the project directory:
+From the extracted release directory:
 
 ```bash
-git pull
+cd ~/qsys
+curl -L -o qsys-release.tar.gz <release-artifact-url>
+tar -xzf qsys-release.tar.gz --strip-components=1
+./install.sh
+```
+
+The installer overwrites `.env` from `.env.example` on each run, then writes the
+currently detected keypad paths.
+
+## Development Or Fallback Source Install
+
+Use a source checkout only for development, direct debugging, or emergency
+fallback when no release artifact is available:
+
+```bash
+git clone https://github.com/of89p/qsys.git
+cd qsys
 uv sync
 cd frontend
 pnpm install --frozen-lockfile
@@ -260,8 +245,11 @@ cd ..
 sudo python3 scripts/install.py
 ```
 
-If you are not using `uv`, reinstall dependencies in the virtual environment
-before rerunning the service installer.
+You can also ask the installer to build the frontend explicitly:
+
+```bash
+sudo python3 scripts/install.py --build-frontend
+```
 
 ## Troubleshooting
 
@@ -300,7 +288,7 @@ sudo systemctl restart qsys-interceptor.service
 ```
 
 If port `8080` is already in use, stop the other process or change `PORT` in
-the root `.env`.
+`.env.example`, then rerun the installer.
 
 ## Uninstall Services
 
