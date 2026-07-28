@@ -15,6 +15,7 @@ http://<pi-ip-address>:8080/
 
 - Linux or Raspberry Pi OS
 - Python 3.11 or newer
+- Firefox available as `firefox` for the kiosk display
 - Up to three USB keyboard/keypad receivers
 - Network access from the TV/browser to the machine running the server
 
@@ -165,8 +166,8 @@ kiosk autostart and services with:
 
 The bootstrap installs Python runtime/build prerequisites, creates `.venv`, then
 delegates to `scripts/install.py`. The installer updates keypad paths in
-`.env`, configures Chromium autostart for the Pi display from the generated
-`PORT`, detects the release root, service user, Python, Node, and `.env`, then
+`.env`, configures Firefox autostart for the Pi display, detects the release
+root, service user, Python, Node, and `.env`, then
 renders and installs:
 
 ```text
@@ -179,13 +180,12 @@ For a nonstandard install, pass explicit values:
 ```bash
 ./install.sh \
   --user pi \
-  --chromium-command chromium-browser \
   --python /home/pi/qsys/.venv/bin/python \
   --node /usr/bin/node
 ```
 
 Use `scripts/install.py --systemd-only` when you only want to update systemd
-services and leave Chromium autostart untouched. Add `--no-start` if you also
+services and leave Firefox autostart untouched. Add `--no-start` if you also
 want to avoid the interceptor startup `.env` refresh during the install run.
 
 For a source checkout fallback, build the frontend before installing or run:

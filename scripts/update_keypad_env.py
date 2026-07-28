@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -194,6 +195,56 @@ def prefer_keyboard_path(candidate: str, existing: str) -> bool:
     return is_usb_revision_path(existing) and not is_usb_revision_path(candidate)
 
 
+def keyboard_interface(path: str) -> tuple[int, int] | None:
+    stem = Path(path).name.removesuffix("-event-kbd")
+    _, separator, raw_interface = stem.rpartition(":")
+    if not separator:
+        return None
+
+    match = re.fullmatch(r"(\d+)\.(\d+)", raw_interface)
+    if not match:
+        return None
+
+    return int(match.group(1)), int(match.group(2))
+
+
+def physical_keyboard_key(path: str) -> str:
+    stem = Path(path).name.removesuffix("-event-kbd")
+    base, separator, raw_interface = stem.rpartition(":")
+    if separator and re.fullmatch(r"\d+\.\d+", raw_interface):
+        return base
+
+    return path
+
+
+def prefer_physical_keyboard_path(candidate: str, existing: str) -> bool:
+    candidate_interface = keyboard_interface(candidate)
+    existing_interface = keyboard_interface(existing)
+    if candidate_interface is None or existing_interface is None:
+        return prefer_keyboard_path(candidate, existing)
+
+    if candidate_interface != existing_interface:
+        return candidate_interface > existing_interface
+
+    return prefer_keyboard_path(candidate, existing)
+
+
+def collapse_physical_keyboard_paths(paths: list[str]) -> list[str]:
+    collapsed: list[str] = []
+    path_indexes_by_physical_device: dict[str, int] = {}
+
+    for path in paths:
+        physical_key = physical_keyboard_key(path)
+        existing_index = path_indexes_by_physical_device.get(physical_key)
+        if existing_index is None:
+            path_indexes_by_physical_device[physical_key] = len(collapsed)
+            collapsed.append(path)
+        elif prefer_physical_keyboard_path(path, collapsed[existing_index]):
+            collapsed[existing_index] = path
+
+    return collapsed
+
+
 def parse_keyboard_paths(ls_output: str, device_dir: Path) -> list[str]:
     paths: list[str] = []
     path_indexes_by_target: dict[str, int] = {}
@@ -229,7 +280,8 @@ def parse_keyboard_paths(ls_output: str, device_dir: Path) -> list[str]:
         elif prefer_keyboard_path(path, paths[existing_index]):
             paths[existing_index] = path
 
-    return paths
+    return collapse_physical_keyboard_paths(paths)
+
 
 
 def env_key(line: str) -> str | None:

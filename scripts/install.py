@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Install QSys services and configure Chromium kiosk autostart.
+"""Install QSys services and configure Firefox kiosk autostart.
 
 Flow:
 1. Resolve the service user, release root, runtime paths, and install options.
 2. Optionally build the frontend when --build-frontend is explicitly requested.
 3. Validate the prebuilt Next.js standalone server expected by production installs.
 4. Overwrite .env from .env.example and detected keypad paths unless skipped.
-5. Configure Chromium kiosk autostart from the generated PORT unless skipped.
+5. Configure Firefox kiosk autostart unless skipped.
 6. Render the interceptor service to refresh .env before each interceptor start.
 7. Install, enable, and restart the qsys systemd services.
 """
@@ -24,19 +24,24 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-AUTOSTART_BEGIN = "# >>> QSys Chromium kiosk >>>"
-AUTOSTART_END = "# <<< QSys Chromium kiosk <<<"
-DEFAULT_PROFILE_DIR = ".config/qsys-chromium"
 DEFAULT_DEVICE_DIR = Path("/dev/input/by-path")
 DEFAULT_INSTALL_DIR = Path("/etc/systemd/system")
-DEFAULT_PORT = "8080"
+DEFAULT_KIOSK_AUTOSTART_FILE = Path(".config/autostart/qsys-kiosk.desktop")
+LEGACY_AUTOSTART_BEGIN = "# >>> QSys Chromium kiosk >>>"
+LEGACY_AUTOSTART_END = "# <<< QSys Chromium kiosk <<<"
+FIREFOX_AUTOSTART_TEXT = """[Desktop Entry]
+Type=Application
+Name=QSys Display
+Exec=firefox --kiosk http://localhost:8080/
+X-GNOME-Autostart-enabled=true
+"""
 SERVICE_NAMES = ("qsys-server.service", "qsys-interceptor.service")
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Overwrite keypad .env values, configure Chromium kiosk autostart "
+            "Overwrite keypad .env values, configure Firefox kiosk autostart "
             "idempotently, then render and install QSys systemd services."
         )
     )
@@ -48,13 +53,9 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
-        "--chromium-command",
-        help="Chromium command to run. Default: chromium, then chromium-browser.",
-    )
-    parser.add_argument(
         "--autostart-file",
         type=Path,
-        help="Autostart file to update. Default: ~<user>/.config/labwc/autostart.",
+        help="Autostart desktop file to overwrite. Default: ~<user>/.config/autostart/qsys-kiosk.desktop.",
     )
     parser.add_argument(
         "--env-file",
@@ -77,9 +78,10 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
-        "--skip-chromium",
+        "--skip-kiosk-autostart",
+        dest="skip_kiosk_autostart",
         action="store_true",
-        help="Do not configure Chromium kiosk autostart.",
+        help="Do not configure Firefox kiosk autostart.",
     )
     parser.add_argument(
         "--skip-env",
@@ -101,7 +103,7 @@ def parse_args() -> argparse.Namespace:
         "--systemd-only",
         action="store_true",
         help=(
-            "Only render/install systemd services. Implies --skip-chromium and "
+            "Only render/install systemd services. Implies --skip-kiosk-autostart and "
             "--skip-env; pass --no-start to avoid the service-start .env refresh."
         ),
     )
@@ -172,101 +174,19 @@ def resolved(path: Path) -> Path:
     return path.expanduser().resolve()
 
 
-def chromium_command(explicit_command: str | None) -> str:
-    if explicit_command:
-        return explicit_command
-
-    if shutil.which("chromium"):
-        return "chromium"
-    if shutil.which("chromium-browser"):
-        return "chromium-browser"
-
-    return "chromium"
-
-
-def kiosk_command(command: str, profile_dir: Path, kiosk_url: str) -> str:
-    parts = [
-        command,
-        "--kiosk",
-        f"--user-data-dir={profile_dir}",
-        "--autoplay-policy=no-user-gesture-required",
-        "--noerrdialogs",
-        "--disable-infobars",
-        "--no-first-run",
-        "--start-maximized",
-        "--force-device-scale-factor=1",
-        kiosk_url,
-    ]
-    return " ".join(shlex.quote(part) for part in parts) + " &"
-
-
-def env_values(path: Path) -> dict[str, str]:
-    if not path.exists():
-        return {}
-
-    values: dict[str, str] = {}
-    for raw_line in path.read_text().splitlines():
-        stripped = raw_line.strip()
-        if not stripped or stripped.startswith("#") or "=" not in stripped:
-            continue
-
-        key, value = stripped.split("=", 1)
-        values[key.strip()] = value.strip().strip("'\"")
-
-    return values
-
-
-def kiosk_url(env_file: Path, example_file: Path, env_will_be_overwritten: bool) -> str:
-    values = env_values(example_file)
-    if not env_will_be_overwritten:
-        values.update(env_values(env_file))
-
-    port = values.get("PORT", DEFAULT_PORT)
-    if not port.isdigit():
-        raise RuntimeError(f"PORT must be numeric to generate kiosk URL: {port}")
-
-    return f"http://127.0.0.1:{port}/"
-
-
-def render_autostart_block(command: str) -> str:
-    return "\n".join(
-        [
-            AUTOSTART_BEGIN,
-            command,
-            AUTOSTART_END,
-        ]
-    )
-
-
-def replace_managed_block(current_text: str, block: str) -> str:
-    if AUTOSTART_BEGIN in current_text and AUTOSTART_END in current_text:
-        before, rest = current_text.split(AUTOSTART_BEGIN, 1)
-        _, after = rest.split(AUTOSTART_END, 1)
-        return (before.rstrip() + "\n\n" + block + "\n" + after.lstrip()).strip() + "\n"
-
-    current_text = current_text.rstrip()
-    if current_text:
-        return current_text + "\n\n" + block + "\n"
-    return block + "\n"
-
-
-def configure_chromium_autostart(
+def configure_firefox_autostart(
     user: str,
     autostart_file: Path,
-    command: str,
     dry_run: bool,
 ) -> None:
-    block = render_autostart_block(command)
-    current_text = autostart_file.read_text() if autostart_file.exists() else ""
-    next_text = replace_managed_block(current_text, block)
-
     if dry_run:
         print(f"\n--- {autostart_file} ---")
-        print(next_text, end="", flush=True)
+        print(FIREFOX_AUTOSTART_TEXT, end="", flush=True)
         return
 
     autostart_file.parent.mkdir(parents=True, exist_ok=True)
-    autostart_file.write_text(next_text)
+    autostart_file.write_text(FIREFOX_AUTOSTART_TEXT)
+    autostart_file.chmod(0o644)
 
     if os.geteuid() == 0:
         user_info = pwd.getpwnam(user)
@@ -274,6 +194,38 @@ def configure_chromium_autostart(
         os.chown(autostart_file, user_info.pw_uid, user_info.pw_gid)
 
     print(f"Wrote {autostart_file}")
+
+
+def remove_legacy_autostart_block(
+    user: str,
+    autostart_file: Path,
+    dry_run: bool,
+) -> None:
+    if not autostart_file.exists():
+        return
+
+    current_text = autostart_file.read_text()
+    if LEGACY_AUTOSTART_BEGIN not in current_text or LEGACY_AUTOSTART_END not in current_text:
+        return
+
+    before, rest = current_text.split(LEGACY_AUTOSTART_BEGIN, 1)
+    _, after = rest.split(LEGACY_AUTOSTART_END, 1)
+    next_text = (before.rstrip() + "\n" + after.lstrip()).strip()
+    if next_text:
+        next_text += "\n"
+
+    if dry_run:
+        print(f"\n--- {autostart_file} ---")
+        print(next_text, end="", flush=True)
+        return
+
+    autostart_file.write_text(next_text)
+
+    if os.geteuid() == 0:
+        user_info = pwd.getpwnam(user)
+        os.chown(autostart_file, user_info.pw_uid, user_info.pw_gid)
+
+    print(f"Removed legacy QSys kiosk block from {autostart_file}")
 
 
 def normalized_device_order(raw_order: str) -> str:
@@ -519,13 +471,12 @@ def main() -> int:
 
     try:
         if args.systemd_only:
-            args.skip_chromium = True
+            args.skip_kiosk_autostart = True
             args.skip_env = True
 
         user = service_user(args.user)
         root = REPO_ROOT
         env_file = resolved(args.env_file) if args.env_file else root / ".env"
-        example_file = root / ".env.example"
         device_order = normalized_device_order(args.device_order)
 
         if needs_root(args) and os.geteuid() != 0:
@@ -561,28 +512,19 @@ def main() -> int:
                     user_info = pwd.getpwnam(user)
                     os.chown(env_file, user_info.pw_uid, user_info.pw_gid)
 
-        if not args.skip_chromium:
+        if not args.skip_kiosk_autostart:
             home = user_home(user)
+            remove_legacy_autostart_block(
+                user,
+                home / ".config" / "labwc" / "autostart",
+                args.dry_run,
+            )
             autostart_file = (
                 resolved(args.autostart_file)
                 if args.autostart_file
-                else home / ".config" / "labwc" / "autostart"
+                else home / DEFAULT_KIOSK_AUTOSTART_FILE
             )
-            profile_dir = home / DEFAULT_PROFILE_DIR
-            if args.dry_run:
-                print(f"+ mkdir -p {shlex.quote(str(profile_dir))}", flush=True)
-            else:
-                profile_dir.mkdir(parents=True, exist_ok=True)
-                if os.geteuid() == 0:
-                    user_info = pwd.getpwnam(user)
-                    os.chown(profile_dir, user_info.pw_uid, user_info.pw_gid)
-
-            command = kiosk_command(
-                chromium_command(args.chromium_command),
-                profile_dir,
-                kiosk_url(env_file, example_file, not args.skip_env),
-            )
-            configure_chromium_autostart(user, autostart_file, command, args.dry_run)
+            configure_firefox_autostart(user, autostart_file, args.dry_run)
 
         services = rendered_services(
             root,

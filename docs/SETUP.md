@@ -6,6 +6,7 @@ Use this guide when preparing a Raspberry Pi from a QSys release artifact.
 
 - Raspberry Pi OS or another Linux system with systemd
 - Python 3.11 or newer from the OS package manager
+- Firefox available as `firefox` for the kiosk display
 - `bash` and `curl` for installing `nvm`, `uv`, and release artifacts
 - Up to three USB keyboard/keypad receivers
 - A QSys release tarball from CI or GitHub Releases
@@ -83,7 +84,7 @@ The bootstrap and installer:
 - Creates `.venv` with runtime Python dependencies.
 - Installs Node.js LTS with `nvm` when Node.js 20.9 or newer is not available.
 - Overwrites `.env` from `.env.example` and detected `/dev/input/by-path` keypads.
-- Configures Chromium kiosk autostart idempotently.
+- Configures Firefox kiosk autostart idempotently.
 - Uses `.venv/bin/python` when available.
 - Detects `node` from `--node`, `PATH`, or the service user's `nvm` install.
 - Renders and installs systemd services, including interceptor startup `.env`
@@ -103,13 +104,12 @@ For a nonstandard install, pass explicit values:
 ```bash
 ./install.sh \
   --user pi \
-  --chromium-command chromium-browser \
   --python /home/pi/qsys/.venv/bin/python \
   --node /usr/bin/node
 ```
 
 Use `scripts/install.py --systemd-only` when you only want to update systemd
-services and leave Chromium autostart untouched. Add `--no-start` if you also
+services and leave Firefox autostart untouched. Add `--no-start` if you also
 want to avoid the interceptor startup `.env` refresh during the install run.
 
 Preview the generated service files without changing the system:
@@ -120,29 +120,19 @@ python3 scripts/install.py --dry-run
 
 ## 4. Set Up The Pi Display Browser
 
-`scripts/install.py` writes a managed QSys block into
-`~/.config/labwc/autostart`. Re-running the installer replaces that block
-without duplicating it or changing unrelated autostart entries. The Chromium
-command uses a dedicated local profile, enables notification sound autoplay,
-starts at `http://127.0.0.1:8080/`, and forces 100% device scale.
+`scripts/install.py` overwrites
+`~/.config/autostart/qsys-kiosk.desktop` with this desktop entry:
 
-If the command is named `chromium-browser` on your Pi, rerun the installer with:
-
-```bash
-./install.sh --chromium-command chromium-browser
+```ini
+[Desktop Entry]
+Type=Application
+Name=QSys Display
+Exec=firefox --kiosk http://localhost:8080/
+X-GNOME-Autostart-enabled=true
 ```
 
-If the display appears zoomed in or out, reset the dedicated kiosk profile once
-and restart Chromium:
-
-```bash
-rm -rf ~/.config/qsys-chromium
-mkdir -p ~/.config/qsys-chromium
-```
-
-The `--force-device-scale-factor=1` flag keeps Chromium at a 100% device scale.
-If the page still appears incorrectly sized after resetting the profile, check
-the Raspberry Pi OS display scaling settings.
+The display user session launches Firefox in kiosk mode through the desktop
+autostart entry.
 
 ## 5. Check The Display
 
@@ -189,6 +179,11 @@ sudo systemctl restart qsys-interceptor.service
 
 Use `--device-dir /dev/input/by-id` if you prefer device-id paths. Use `--swap`
 for older two-keypad Food/Drinks setups.
+
+Some composite USB keypads expose more than one `*-event-kbd` interface for the
+same physical receiver, for example `0:1.5:1.0-event-kbd` and
+`0:1.5:1.2-event-kbd`. The generator treats those as one keypad and prefers
+the higher keyboard interface.
 
 ## Service Commands
 
