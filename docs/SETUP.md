@@ -32,6 +32,8 @@ sudo apt install -y ca-certificates curl
 Install Node.js 20.9 or newer:
 
 ```bash
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install -y nodejs
 node --version
 ```
 
