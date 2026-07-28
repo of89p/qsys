@@ -128,7 +128,7 @@ def read_ls_output(args: argparse.Namespace) -> str:
 
 def resolved_path(path: Path) -> Path | None:
     try:
-        return path.resolve()
+        return path.resolve(strict=True)
     except OSError:
         return None
 
@@ -174,8 +174,29 @@ def is_excluded_keyboard(
     return resolved is not None and str(resolved) in excluded_keys
 
 
+def device_target_key(link_path: Path, link_target: str) -> str:
+    resolved = resolved_path(link_path)
+    if resolved:
+        return str(resolved)
+
+    target_path = Path(link_target)
+    if not target_path.is_absolute():
+        target_path = link_path.parent / target_path
+
+    return os.path.normpath(str(target_path))
+
+
+def is_usb_revision_path(path: str) -> bool:
+    return "-usbv" in Path(path).name
+
+
+def prefer_keyboard_path(candidate: str, existing: str) -> bool:
+    return is_usb_revision_path(existing) and not is_usb_revision_path(candidate)
+
+
 def parse_keyboard_paths(ls_output: str, device_dir: Path) -> list[str]:
     paths: list[str] = []
+    path_indexes_by_target: dict[str, int] = {}
     excluded_keys = excluded_device_keys()
 
     for raw_line in ls_output.splitlines():
@@ -200,8 +221,13 @@ def parse_keyboard_paths(ls_output: str, device_dir: Path) -> list[str]:
             continue
 
         path = str(link_path)
-        if path not in paths:
+        target_key = device_target_key(link_path, link_target)
+        existing_index = path_indexes_by_target.get(target_key)
+        if existing_index is None:
+            path_indexes_by_target[target_key] = len(paths)
             paths.append(path)
+        elif prefer_keyboard_path(path, paths[existing_index]):
+            paths[existing_index] = path
 
     return paths
 
