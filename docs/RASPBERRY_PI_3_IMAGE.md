@@ -17,7 +17,8 @@ to the physical USB port path, so repeatability depends on hardware placement.
 - Use the same keypad brands/models for Food, Drinks, and Chicken.
 - Label the keypads and Raspberry Pi USB ports.
 - Plug each keypad into the same physical USB port on every cloned Pi.
-- If you ever regenerate keypad paths manually, use the same order:
+- The installed interceptor service regenerates keypad paths on startup. If you
+  ever regenerate keypad paths manually, use the same order:
 
 ```bash
 cd /home/pi/qsys
@@ -41,7 +42,8 @@ If the keypads were already plugged into their final ports before running
 `./install.sh`, `.env` has already been generated. The installer calls
 `scripts/update_keypad_env.py` unless `--skip-env` is passed.
 
-If the keypads were plugged in later, moved, or replaced, regenerate `.env`:
+If the keypads were plugged in later, moved, or replaced, restart the
+interceptor or reboot so `.env` is regenerated:
 
 ```bash
 python3 scripts/update_keypad_env.py --order food,drinks,chicken
@@ -332,7 +334,8 @@ sudo systemctl restart ssh
 If the clone uses the same keypad models in the same USB ports, the `.env` from
 the golden image should already point at the right `/dev/input/by-path` entries.
 Only refresh keypad paths if the ports or receivers changed, or if keypad input
-does not work:
+does not work. Rebooting the clone is enough because interceptor startup
+regenerates `.env`; run this manually when you want to refresh without rebooting:
 
 ```bash
 cd /home/pi/qsys
@@ -385,6 +388,9 @@ cd /home/pi/qsys
 python3 scripts/update_keypad_env.py --order food,drinks,chicken
 sudo systemctl restart qsys-interceptor.service
 ```
+
+A Pi reboot also runs the same refresh through `qsys-interceptor.service`
+startup.
 
 If the SD card does not boot, write the image again and confirm you selected the
 whole disk device, not one partition.

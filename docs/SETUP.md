@@ -7,7 +7,7 @@ Use this guide when preparing a Raspberry Pi from a QSys release artifact.
 - Raspberry Pi OS or another Linux system with systemd
 - Python 3.11 or newer from the OS package manager
 - Node.js 20.9 or newer
-- `curl` for downloading the release artifact and installing `uv`
+- `bash` and `curl` for installing `nvm`, `uv`, and release artifacts
 - Up to three USB keyboard/keypad receivers
 - A QSys release tarball from CI or GitHub Releases
 
@@ -26,20 +26,10 @@ Update Linux and install basic download tools:
 
 ```bash
 sudo apt update
-sudo apt install -y ca-certificates curl
+sudo apt install -y bash ca-certificates curl
 ```
 
-Install Node.js 20.9 or newer:
-
-```bash
-curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-sudo apt install -y nodejs
-node --version
-```
-
-If `node --version` is older than 20.9, install a newer Node release before
-continuing. The production Pi does not need `pnpm` because it does not build
-the frontend locally.
+Node.js is installed with `nvm` after extracting the release artifact.
 
 ## 1. Download The Release
 
@@ -52,6 +42,16 @@ tar -xzf qsys-release.tar.gz --strip-components=1
 
 The release artifact includes the built Next.js server and the setup scripts.
 It does not include `.env`, Git history, or frontend build tooling.
+
+Install Node.js LTS with `nvm`:
+
+```bash
+./scripts/install_node_nvm.sh
+```
+
+The helper installs `nvm` for the current user, runs `nvm install --lts`, and
+sets the LTS line as the default Node.js version. The production Pi does not
+need `pnpm` because it does not build the frontend locally.
 
 ## 2. Plug In Keypads
 
@@ -84,8 +84,9 @@ The bootstrap and installer:
 - Overwrites `.env` from `.env.example` and detected `/dev/input/by-path` keypads.
 - Configures Chromium kiosk autostart idempotently.
 - Uses `.venv/bin/python` when available.
-- Detects `node` from `PATH`.
-- Renders and installs the systemd services.
+- Detects `node` from `--node`, `PATH`, or the service user's `nvm` install.
+- Renders and installs systemd services, including interceptor startup `.env`
+  regeneration.
 - Adds the service user to the `input` group.
 - Enables and restarts both services.
 
@@ -107,7 +108,8 @@ For a nonstandard install, pass explicit values:
 ```
 
 Use `scripts/install.py --systemd-only` when you only want to update systemd
-services and leave Chromium autostart and `.env` untouched.
+services and leave Chromium autostart untouched. Add `--no-start` if you also
+want to avoid the interceptor startup `.env` refresh during the install run.
 
 Preview the generated service files without changing the system:
 
@@ -203,7 +205,8 @@ journalctl -u qsys-server.service -f
 journalctl -u qsys-interceptor.service -f
 ```
 
-Restart after changing code or `.env`:
+Restart after changing code or `.env`. Starting the interceptor refreshes keypad
+paths in `.env`, so rebooting the Pi is enough after hot swapping USB receivers:
 
 ```bash
 sudo systemctl restart qsys-server.service
@@ -229,7 +232,8 @@ tar -xzf qsys-release.tar.gz --strip-components=1
 ```
 
 The installer overwrites `.env` from `.env.example` on each run, then writes the
-currently detected keypad paths.
+currently detected keypad paths. The installed interceptor service repeats that
+refresh before every interceptor start.
 
 ## Development Or Fallback Source Install
 
@@ -280,6 +284,10 @@ Regenerate `.env` after changing USB receivers:
 python3 scripts/update_keypad_env.py
 sudo systemctl restart qsys-interceptor.service
 ```
+
+The installed `qsys-interceptor.service` runs the same `.env` regeneration
+before every interceptor start, so rebooting the Pi also refreshes keypad paths
+after USB receivers are swapped.
 
 If the interceptor reports permission errors, rerun the installer or add the
 service user to the `input` group:

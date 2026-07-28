@@ -183,7 +183,8 @@ For a nonstandard install, pass explicit values:
 ```
 
 Use `scripts/install.py --systemd-only` when you only want to update systemd
-services and leave Chromium autostart and `.env` untouched.
+services and leave Chromium autostart untouched. Add `--no-start` if you also
+want to avoid the interceptor startup `.env` refresh during the install run.
 
 For a source checkout fallback, build the frontend before installing or run:
 
@@ -200,8 +201,8 @@ python3 scripts/install.py --dry-run
 ## Configuration
 
 The root `.env` file is generated from `.env.example` whenever the installer or
-`scripts/update_keypad_env.py` runs. Defaults are listed explicitly in
-`.env.example`.
+`scripts/update_keypad_env.py` runs, and before `qsys-interceptor.service`
+starts. Defaults are listed explicitly in `.env.example`.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
@@ -238,7 +239,9 @@ journalctl -u qsys-server.service -f
 journalctl -u qsys-interceptor.service -f
 ```
 
-Restart after changing code or `.env`:
+Restart after changing code or `.env`. Starting the interceptor also refreshes
+the keypad paths in `.env`, so rebooting the Pi is enough after hot swapping USB
+receivers:
 
 ```bash
 sudo systemctl restart qsys-server.service
@@ -255,4 +258,5 @@ Queue state is stored in memory, so restarting the server clears the display.
   `.env.example`, then rerun the installer.
 - If the interceptor reports permission errors, add the service user to the
   `input` group and restart the login session or service.
-- If keypad input does nothing, regenerate `.env` and restart the interceptor.
+- If keypad input does nothing, restart `qsys-interceptor.service` or reboot so
+  startup refreshes `.env` from the currently detected receivers.

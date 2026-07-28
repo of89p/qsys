@@ -43,6 +43,31 @@ user_from_args() {
     return 0
 }
 
+node_from_args() {
+    next_is_node=0
+    for arg in "$@"; do
+        if [ "$next_is_node" -eq 1 ]; then
+            printf '%s\n' "$arg"
+            return
+        fi
+
+        case "$arg" in
+            --)
+                return 0
+                ;;
+            --node)
+                next_is_node=1
+                ;;
+            --node=*)
+                printf '%s\n' "${arg#--node=}"
+                return
+                ;;
+        esac
+    done
+
+    return 0
+}
+
 SERVICE_USER=${QSYS_USER:-${SUDO_USER:-}}
 ARG_USER=$(user_from_args "$@")
 if [ -n "$ARG_USER" ]; then
@@ -71,6 +96,37 @@ as_service_user() {
     fi
 }
 
+node_from_service_user_nvm() {
+    as_service_user sh -c '
+        if [ -z "${NVM_DIR:-}" ]; then
+            if [ -z "${XDG_CONFIG_HOME:-}" ]; then
+                NVM_DIR="$HOME/.nvm"
+            else
+                NVM_DIR="$XDG_CONFIG_HOME/nvm"
+            fi
+        fi
+        export NVM_DIR
+
+        if [ -s "$NVM_DIR/nvm.sh" ]; then
+            . "$NVM_DIR/nvm.sh"
+            if command -v node >/dev/null 2>&1; then
+                command -v node
+                exit 0
+            fi
+            if nvm use --silent default >/dev/null 2>&1; then
+                command -v node
+                exit 0
+            fi
+            if nvm use --silent --lts >/dev/null 2>&1; then
+                command -v node
+                exit 0
+            fi
+        fi
+
+        exit 1
+    '
+}
+
 if command -v apt-get >/dev/null 2>&1; then
     export DEBIAN_FRONTEND=noninteractive
     apt-get update
@@ -90,13 +146,27 @@ if ! python3 -c 'import sys; raise SystemExit(sys.version_info < (3, 11))'; then
     exit 1
 fi
 
-if ! command -v node >/dev/null 2>&1; then
+ARG_NODE=$(node_from_args "$@")
+if [ -n "$ARG_NODE" ]; then
+    NODE_BIN=$ARG_NODE
+elif command -v node >/dev/null 2>&1; then
+    NODE_BIN=$(command -v node)
+else
+    NODE_BIN=$(node_from_service_user_nvm || true)
+fi
+
+if [ -z "$NODE_BIN" ]; then
     echo "Install failed: Node.js 20.9 or newer must be installed before QSys." >&2
     exit 1
 fi
 
-if ! node -e "const [major, minor] = process.versions.node.split('.').map(Number); process.exit(major > 20 || (major === 20 && minor >= 9) ? 0 : 1);"; then
-    echo "Install failed: Node.js 20.9 or newer is required. Found $(node --version)." >&2
+if [ ! -x "$NODE_BIN" ]; then
+    echo "Install failed: Node executable does not exist or is not executable: $NODE_BIN" >&2
+    exit 1
+fi
+
+if ! "$NODE_BIN" -e "const [major, minor] = process.versions.node.split('.').map(Number); process.exit(major > 20 || (major === 20 && minor >= 9) ? 0 : 1);"; then
+    echo "Install failed: Node.js 20.9 or newer is required. Found $("$NODE_BIN" --version)." >&2
     exit 1
 fi
 
@@ -121,4 +191,4 @@ if [ ! -x "$PYTHON" ]; then
     exit 1
 fi
 
-"$PYTHON" "$ROOT_DIR/scripts/install.py" --user "$SERVICE_USER" "$@"
+"$PYTHON" "$ROOT_DIR/scripts/install.py" --user "$SERVICE_USER" "$@" --node "$NODE_BIN"

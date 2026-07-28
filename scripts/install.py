@@ -7,7 +7,8 @@ Flow:
 3. Validate the prebuilt Next.js standalone server expected by production installs.
 4. Overwrite .env from .env.example and detected keypad paths unless skipped.
 5. Configure Chromium kiosk autostart from the generated PORT unless skipped.
-6. Render, install, enable, and restart the qsys systemd services.
+6. Render the interceptor service to refresh .env before each interceptor start.
+7. Install, enable, and restart the qsys systemd services.
 """
 
 from __future__ import annotations
@@ -83,7 +84,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--skip-env",
         action="store_true",
-        help="Do not generate or update .env from the input device directory.",
+        help=(
+            "Do not generate or update .env during install. The installed "
+            "interceptor service still refreshes .env when it starts."
+        ),
     )
     parser.add_argument(
         "--build-frontend",
@@ -96,7 +100,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--systemd-only",
         action="store_true",
-        help="Only render/install systemd services. Implies --skip-chromium and --skip-env.",
+        help=(
+            "Only render/install systemd services. Implies --skip-chromium and "
+            "--skip-env; pass --no-start to avoid the service-start .env refresh."
+        ),
     )
     parser.add_argument(
         "--python",
@@ -269,7 +276,20 @@ def configure_chromium_autostart(
     print(f"Wrote {autostart_file}")
 
 
-def update_env_command(args: argparse.Namespace, root: Path, env_file: Path) -> list[str]:
+def normalized_device_order(raw_order: str) -> str:
+    parts = [part.strip() for part in raw_order.split(",") if part.strip()]
+    if not parts:
+        raise RuntimeError("--device-order must include at least one station.")
+
+    return ",".join(parts)
+
+
+def update_env_command(
+    args: argparse.Namespace,
+    root: Path,
+    env_file: Path,
+    device_order: str,
+) -> list[str]:
     return [
         sys.executable,
         str(root / "scripts" / "update_keypad_env.py"),
@@ -280,7 +300,7 @@ def update_env_command(args: argparse.Namespace, root: Path, env_file: Path) -> 
         "--device-dir",
         str(resolved(args.device_dir)),
         "--order",
-        args.device_order,
+        device_order,
     ]
 
 
@@ -373,6 +393,8 @@ def rendered_services(
     python: Path,
     node: Path,
     env_file: Path,
+    device_dir: Path,
+    device_order: str,
 ) -> dict[str, str]:
     replacements = {
         "QSYS_USER": user,
@@ -380,6 +402,8 @@ def rendered_services(
         "QSYS_PYTHON": str(python),
         "QSYS_NODE": str(node),
         "QSYS_ENV_FILE": str(env_file),
+        "QSYS_DEVICE_DIR": str(device_dir),
+        "QSYS_DEVICE_ORDER": device_order,
     }
 
     for label, value in replacements.items():
@@ -502,6 +526,7 @@ def main() -> int:
         root = REPO_ROOT
         env_file = resolved(args.env_file) if args.env_file else root / ".env"
         example_file = root / ".env.example"
+        device_order = normalized_device_order(args.device_order)
 
         if needs_root(args) and os.geteuid() != 0:
             raise RuntimeError(
@@ -527,7 +552,7 @@ def main() -> int:
             ensure_standalone_build(root)
 
         if not args.skip_env:
-            command = update_env_command(args, root, env_file)
+            command = update_env_command(args, root, env_file, device_order)
             if args.dry_run:
                 print("+ " + shlex.join(command), flush=True)
             else:
@@ -559,7 +584,15 @@ def main() -> int:
             )
             configure_chromium_autostart(user, autostart_file, command, args.dry_run)
 
-        services = rendered_services(root, user, python, node, env_file)
+        services = rendered_services(
+            root,
+            user,
+            python,
+            node,
+            env_file,
+            resolved(args.device_dir),
+            device_order,
+        )
 
         if not args.no_input_group:
             ensure_input_group(user, args.dry_run)
