@@ -6,7 +6,6 @@ Use this guide when preparing a Raspberry Pi from a QSys release artifact.
 
 - Raspberry Pi OS or another Linux system with systemd
 - Python 3.11 or newer from the OS package manager
-- Node.js 20.9 or newer
 - `bash` and `curl` for installing `nvm`, `uv`, and release artifacts
 - Up to three USB keyboard/keypad receivers
 - A QSys release tarball from CI or GitHub Releases
@@ -29,7 +28,8 @@ sudo apt update
 sudo apt install -y bash ca-certificates curl
 ```
 
-Node.js is installed with `nvm` after extracting the release artifact.
+The bootstrap installs Node.js LTS with `nvm` if Node.js 20.9 or newer is not
+already available.
 
 ## 1. Download The Release
 
@@ -43,15 +43,16 @@ tar -xzf qsys-release.tar.gz --strip-components=1
 The release artifact includes the built Next.js server and the setup scripts.
 It does not include `.env`, Git history, or frontend build tooling.
 
-Install Node.js LTS with `nvm`:
+If you want to install Node.js before running the full bootstrap, use:
 
 ```bash
 ./scripts/install_node_nvm.sh
 ```
 
-The helper installs `nvm` for the current user, runs `nvm install --lts`, and
-sets the LTS line as the default Node.js version. The production Pi does not
-need `pnpm` because it does not build the frontend locally.
+The full bootstrap runs the same helper automatically when needed. The helper
+installs `nvm` for the service user, runs `nvm install --lts`, and sets the LTS
+line as the default Node.js version. The production Pi does not need `pnpm`
+because it does not build the frontend locally.
 
 ## 2. Plug In Keypads
 
@@ -80,7 +81,7 @@ The bootstrap and installer:
 - Installs Python runtime and build prerequisites when `apt-get` is available.
 - Installs or detects `uv`.
 - Creates `.venv` with runtime Python dependencies.
-- Validates Node.js 20.9 or newer.
+- Installs Node.js LTS with `nvm` when Node.js 20.9 or newer is not available.
 - Overwrites `.env` from `.env.example` and detected `/dev/input/by-path` keypads.
 - Configures Chromium kiosk autostart idempotently.
 - Uses `.venv/bin/python` when available.

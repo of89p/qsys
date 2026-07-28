@@ -3,7 +3,7 @@
 # 1. Re-exec through sudo when started by the target service user.
 # 2. Resolve the service user from --user, QSYS_USER, or SUDO_USER.
 # 3. Install Python/runtime build prerequisites when apt-get is available.
-# 4. Validate system Python 3.11+ and Node.js 20.9+.
+# 4. Validate system Python 3.11+ and install or locate Node.js 20.9+.
 # 5. Install or locate uv, then create/update .venv as the service user.
 # 6. Delegate all QSys-specific setup to scripts/install.py.
 set -eu
@@ -109,10 +109,6 @@ node_from_service_user_nvm() {
 
         if [ -s "$NVM_DIR/nvm.sh" ]; then
             . "$NVM_DIR/nvm.sh"
-            if command -v node >/dev/null 2>&1; then
-                command -v node
-                exit 0
-            fi
             if nvm use --silent default >/dev/null 2>&1; then
                 command -v node
                 exit 0
@@ -127,10 +123,25 @@ node_from_service_user_nvm() {
     '
 }
 
+node_is_compatible() {
+    [ -n "${1:-}" ] || return 1
+    [ -x "$1" ] || return 1
+    "$1" -e "const [major, minor] = process.versions.node.split('.').map(Number); process.exit(major > 20 || (major === 20 && minor >= 9) ? 0 : 1);" >/dev/null 2>&1
+}
+
+install_service_user_node() {
+    if [ ! -x "$ROOT_DIR/scripts/install_node_nvm.sh" ]; then
+        return 1
+    fi
+
+    QSYS_USER="$SERVICE_USER" sh "$ROOT_DIR/scripts/install_node_nvm.sh" >&2
+}
+
 if command -v apt-get >/dev/null 2>&1; then
     export DEBIAN_FRONTEND=noninteractive
     apt-get update
     apt-get install -y \
+        bash \
         build-essential \
         ca-certificates \
         curl \
@@ -149,14 +160,17 @@ fi
 ARG_NODE=$(node_from_args "$@")
 if [ -n "$ARG_NODE" ]; then
     NODE_BIN=$ARG_NODE
-elif command -v node >/dev/null 2>&1; then
+elif command -v node >/dev/null 2>&1 && node_is_compatible "$(command -v node)"; then
     NODE_BIN=$(command -v node)
+elif NODE_BIN=$(node_from_service_user_nvm || true); node_is_compatible "$NODE_BIN"; then
+    :
 else
+    install_service_user_node
     NODE_BIN=$(node_from_service_user_nvm || true)
 fi
 
 if [ -z "$NODE_BIN" ]; then
-    echo "Install failed: Node.js 20.9 or newer must be installed before QSys." >&2
+    echo "Install failed: could not install or locate Node.js 20.9 or newer for $SERVICE_USER." >&2
     exit 1
 fi
 

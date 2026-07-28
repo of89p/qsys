@@ -14,10 +14,12 @@ http://<pi-ip-address>:8080/
 ## Requirements
 
 - Linux or Raspberry Pi OS
-- Node.js 20.9 or newer
 - Python 3.11 or newer
 - Up to three USB keyboard/keypad receivers
 - Network access from the TV/browser to the machine running the server
+
+The Raspberry Pi bootstrap installs Node.js LTS with `nvm` when Node.js 20.9 or
+newer is not already available.
 
 ## Install
 
