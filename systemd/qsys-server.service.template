@@ -6,11 +6,18 @@ After=network-online.target
 [Service]
 Type=simple
 User={{QSYS_USER}}
-WorkingDirectory={{QSYS_ROOT}}
-Environment=PYTHONUNBUFFERED=1
-ExecStart={{QSYS_PYTHON}} {{QSYS_ROOT}}/app/server.py
+WorkingDirectory={{QSYS_ROOT}}/frontend/.next/standalone
+Environment=NODE_ENV=production
+Environment=NEXT_TELEMETRY_DISABLED=1
+Environment=HOSTNAME=0.0.0.0
+Environment=PORT=8080
+Environment=NODE_OPTIONS=--max-old-space-size=128
+EnvironmentFile=-{{QSYS_ENV_FILE}}
+ExecStart={{QSYS_NODE}} server.js
 Restart=always
 RestartSec=3
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target

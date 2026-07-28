@@ -1,6 +1,9 @@
 # QSys Order Queue
 
-QSys is a simple order collection display. A Flask server serves the TV page and keeps the current queue state in memory. An optional keyboard interceptor reads USB keypad input from `/dev/input` and sends completed order numbers to the server.
+QSys is a local order collection display for a Raspberry Pi kiosk. A production
+Next.js server renders the TV display and exposes the queue API. A Python
+keyboard interceptor reads USB keypad input from `/dev/input` and submits
+completed order numbers to the server.
 
 The display is available at:
 
@@ -11,72 +14,119 @@ http://<pi-ip-address>:8080/
 ## Requirements
 
 - Linux or Raspberry Pi OS
-- Python 3.12 or newer
+- Node.js 20.9 or newer
+- Python 3.11 or newer
 - Up to three USB keyboard/keypad receivers
 - Network access from the TV/browser to the machine running the server
 
 ## Install
 
-For Raspberry Pi deployment, use [SETUP.md](SETUP.md).
+For Raspberry Pi deployment, use [docs/SETUP.md](docs/SETUP.md). The Pi
+production path uses a release artifact and does not require `git clone`,
+`pnpm install`, or `pnpm build`.
 
-From the project directory:
+From a release artifact on the Pi:
+
+```bash
+mkdir -p ~/qsys
+cd ~/qsys
+curl -L -o qsys-release.tar.gz <release-artifact-url>
+tar -xzf qsys-release.tar.gz --strip-components=1
+./install.sh
+```
+
+For development from a source checkout:
 
 ```bash
 cd /path/to/qsys
-```
-
-If you use `uv`:
-
-```bash
 uv sync
+cd frontend
+pnpm install --frozen-lockfile
+pnpm build
 ```
 
-Or with standard Python tooling:
+If you are not using `uv`:
 
 ```bash
-python3.12 -m venv .venv
+python3.11 -m venv .venv
 . .venv/bin/activate
 pip install -r requirements.txt
 ```
 
 ## Run Manually
 
-Start the web server in one terminal and keep it running:
+Start the web server in one terminal:
 
 ```bash
-.venv/bin/python app/server.py
+cd frontend
+pnpm build
+pnpm start
 ```
 
-Open the display from the same machine:
+Open the display:
 
 ```text
 http://127.0.0.1:8080/
 ```
 
-From another device on the same network, find the machine IP address:
+In another terminal, run the interceptor after configuring `.env`:
 
 ```bash
-hostname -I
-```
-
-Then open:
-
-```text
-http://<pi-ip-address>:8080/
+.venv/bin/python -m interceptor
 ```
 
 You can test the queue API without a keypad:
 
 ```bash
-curl -X POST http://127.0.0.1:8080/api/queue \
+curl -X POST http://127.0.0.1:8080/api/v1/queue \
   -H 'Content-Type: application/json' \
   -d '{"station":"food","number":"12"}'
 ```
 
 The display page is read-only. Order numbers should be submitted through
-`/api/queue`, either from the USB keypad interceptor or from a manual API call.
-The display receives live updates from `/api/events` using server-sent events.
-`/api/state` remains available as a snapshot endpoint for manual checks.
+`/api/v1/queue`, either from the USB keypad interceptor or from a manual API
+call. The display receives live updates from `/api/v1/events` using
+server-sent events. `/api/v1/state` is available as a diagnostic snapshot
+endpoint.
+
+## API Contract
+
+`POST /api/v1/queue` accepts:
+
+```json
+{"station":"food","number":"12"}
+```
+
+`station` must be `drinks`, `chicken`, or `food`. `number` must contain digits
+only and be at most 3 digits. Successful responses include the current state:
+
+```json
+{
+  "ok": true,
+  "state": {
+    "version": 1,
+    "queues": {
+      "drinks": [],
+      "chicken": [],
+      "food": [
+        {"callId": 1, "number": "012", "calledAt": "2026-07-23T10:12:30.000Z"}
+      ]
+    },
+    "latestCall": {
+      "callId": 1,
+      "station": "food",
+      "number": "012",
+      "calledAt": "2026-07-23T10:12:30.000Z"
+    }
+  }
+}
+```
+
+Errors return `400`:
+
+```json
+{"ok":false,"error":"number must contain digits only"}
+```
 
 ## Set Up USB Keypads
 
@@ -89,104 +139,90 @@ ls -l /dev/input/by-path/
 Generate or update `.env` from the detected keyboard device paths:
 
 ```bash
-python3 scripts/update_env_from_ls.py
-```
-
-If you saved the `ls -l /dev/input/by-path/` output to a file, pass it in:
-
-```bash
-python3 scripts/update_env_from_ls.py --from-file devlogs/ls-logs.txt
+python3 scripts/update_keypad_env.py
 ```
 
 The first `*-event-kbd` device is written as `FOOD_DEVICE_PATH`; the second is
 written as `DRINKS_DEVICE_PATH`; the third is written as
 `CHICKEN_DEVICE_PATH`. Use `--order food,drinks,chicken` to make the assignment
 explicit, or pass a different station order to match the `ls` output. Add
-`--swap` for older two-keypad Food/Drinks setups where the first two assignments
-should be reversed.
-The default `/dev/input/by-path` paths are tied to USB ports, which works better
-than `/dev/input/by-id` when multiple keypads are the same brand. Keep each
-keypad in the same USB port after setup.
-The generator skips `/dev/input/by-id/usb-Keychron_Keychron_K6-event-kbd`
-because that keyboard is reserved as the dev keyboard. When scanning
-`/dev/input/by-path`, the matching by-path symlink is ignored too.
+`--swap` for older two-keypad Food/Drinks setups.
 
-Use the `*-event-kbd` path for each keypad. Example:
-
-```text
-/dev/input/by-path/platform-xhci-hcd.0-usb-0:1.2:1.0-event-kbd
-```
-
-Run the interceptor with one keypad in a second terminal:
-
-```bash
-set -a
-. ./.env
-set +a
-.venv/bin/python app/interceptor.py
-```
-
-If you have not added your user to the `input` group, run the same manual test
-with `sudo`:
-
-```bash
-sudo env FOOD_DEVICE_PATH=/dev/input/by-path/<food-keypad-event-kbd> \
-  QSYS_QUEUE_URL=http://127.0.0.1:8080/api/queue \
-  .venv/bin/python app/interceptor.py
-```
-
-Run it with separate food, drinks, and chicken keypads:
-
-```bash
-FOOD_DEVICE_PATH=/dev/input/by-path/<food-keypad-event-kbd> \
-DRINKS_DEVICE_PATH=/dev/input/by-path/<drinks-keypad-event-kbd> \
-CHICKEN_DEVICE_PATH=/dev/input/by-path/<chicken-keypad-event-kbd> \
-.venv/bin/python app/interceptor.py
-```
-
-The interceptor reads digits, accepts `Backspace`, and submits the number when `Enter` is pressed. Submitted numbers are padded to 3 digits on the display.
-It reads the input device without an exclusive grab, so non-keypad input passes
-through to the OS normally. By default it only treats keypad events such as
-`KEY_KP1` and `KEY_KPENTER` as order input. If your keypad reports plain number
-row keys instead, set `QSYS_ACCEPT_ROW_DIGITS=1`.
-
-Access to `/dev/input` usually requires the `input` group:
-
-```bash
-sudo usermod -aG input "$USER"
-```
-
-Log out and back in after changing groups. For a quick manual test only, you can run the interceptor with `sudo`, but the systemd service below is configured to use the `input` group.
+The default `/dev/input/by-path` paths are tied to USB ports. Keep each keypad
+in the same USB port after setup. The generator skips the configured dev
+keyboards so they are not assigned to a station.
 
 ## Install As System Services
 
-The service templates are in `systemd/`. Install them with the setup script from
-the project directory:
+The service templates are in `systemd/`. From a release artifact, install the
+kiosk autostart and services with:
 
 ```bash
-sudo python3 scripts/install_systemd_services.py
+./install.sh
 ```
 
-The script detects this checkout path, the service user, and the Python
-executable, then renders real `qsys-server.service` and
-`qsys-interceptor.service` files into `/etc/systemd/system/`. It also updates
-`.env` from `/dev/input/by-path`, adds the service user to the `input` group, runs
-`systemctl daemon-reload`, enables both services, and restarts them.
+The bootstrap installs Python runtime/build prerequisites, creates `.venv`, then
+delegates to `scripts/install.py`. The installer updates keypad paths in
+`.env`, configures Chromium autostart for the Pi display from the generated
+`PORT`, detects the release root, service user, Python, Node, and `.env`, then
+renders and installs:
 
-For an image build or a nonstandard install, pass explicit values:
+```text
+qsys-server.service
+qsys-interceptor.service
+```
+
+For a nonstandard install, pass explicit values:
 
 ```bash
-sudo python3 scripts/install_systemd_services.py \
+./install.sh \
   --user pi \
-  --root /home/pi/qsys \
-  --python /home/pi/qsys/.venv/bin/python
+  --chromium-command chromium-browser \
+  --python /home/pi/qsys/.venv/bin/python \
+  --node /usr/bin/node
+```
+
+Use `scripts/install.py --systemd-only` when you only want to update systemd
+services and leave Chromium autostart and `.env` untouched.
+
+For a source checkout fallback, build the frontend before installing or run:
+
+```bash
+sudo python3 scripts/install.py --build-frontend
 ```
 
 Preview without changing the system:
 
 ```bash
-python3 scripts/install_systemd_services.py --dry-run
+python3 scripts/install.py --dry-run
 ```
+
+## Configuration
+
+The root `.env` file is generated from `.env.example` whenever the installer or
+`scripts/update_keypad_env.py` runs. Defaults are listed explicitly in
+`.env.example`.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `NODE_ENV` | `production` | Runs the Next server in production mode. |
+| `NEXT_TELEMETRY_DISABLED` | `1` | Disables Next telemetry. |
+| `HOSTNAME` | `0.0.0.0` | Host bound by the standalone Next server. |
+| `PORT` | `8080` | Port used by the display and API. |
+| `NODE_OPTIONS` | `--max-old-space-size=128` | Caps V8 old-space heap growth. |
+| `PYTHONUNBUFFERED` | `1` | Flushes Python logs promptly under systemd. |
+| `QSYS_LOG_LEVEL` | `WARNING` | Python interceptor logging level. |
+| `QSYS_QUEUE_URL` | `http://127.0.0.1:8080/api/v1/queue` | Interceptor queue endpoint. |
+| `QSYS_ACCEPT_ROW_DIGITS` | `0` | Set to `1` if a keypad sends number-row keycodes. |
+| `QSYS_MAX_VISIBLE_ORDERS` | `3` | Visible calls retained per station. |
+| `QSYS_FLASH_DURATION_MS` | `10000` | Per-call flashing duration on the display. |
+| `QSYS_SSE_HEARTBEAT_MS` | `15000` | SSE heartbeat interval. |
+| `QSYS_AUTO_RELOAD_INTERVAL_MS` | `300000` | Kiosk page reload interval. |
+| `FOOD_DEVICE_PATH` | empty | Input device for the Food station. |
+| `DRINKS_DEVICE_PATH` | empty | Input device for the Drinks station. |
+| `CHICKEN_DEVICE_PATH` | empty | Input device for the Chicken Rice station. |
+
+## Service Commands
 
 Check status:
 
@@ -195,45 +231,28 @@ systemctl status qsys-server.service
 systemctl status qsys-interceptor.service
 ```
 
-View logs for systemd services:
+View logs from journald:
 
 ```bash
 journalctl -u qsys-server.service -f
 journalctl -u qsys-interceptor.service -f
 ```
 
-When running manually, logs are printed directly in the terminal running
-`app/server.py` or `app/interceptor.py`.
-
-The interceptor logs keypad presses, unmapped keys, buffer changes, and queue
-submissions.
-
-Restart after making changes:
+Restart after changing code or `.env`:
 
 ```bash
 sudo systemctl restart qsys-server.service
 sudo systemctl restart qsys-interceptor.service
 ```
 
-## Configuration
-
-The interceptor supports these environment variables:
-
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `QSYS_QUEUE_URL` | `http://127.0.0.1:8080/api/queue` | Server endpoint that receives keypad submissions. |
-| `QSYS_LOG_LEVEL` | `INFO` | Interceptor logging level. |
-| `QSYS_ACCEPT_ROW_DIGITS` | empty | Set to `1` only if your keypad sends normal number-row keycodes instead of keypad keycodes. |
-| `FOOD_DEVICE_PATH` | empty | Input device for the Food station. |
-| `DRINKS_DEVICE_PATH` | empty | Input device for the Drinks station. |
-| `CHICKEN_DEVICE_PATH` | empty | Input device for the Chicken Rice station. |
-
-The server listens on `0.0.0.0:8080`.
+Queue state is stored in memory, so restarting the server clears the display.
 
 ## Troubleshooting
 
-- If the TV cannot load the page, confirm the server is running and open `http://<pi-ip-address>:8080/` from a browser on the same network.
-- If port `8080` is already in use, stop the other process or change the port in `app/server.py`.
-- If the interceptor prints a permission error, add the service user to the `input` group and restart the login session or the service.
-- If keypad input does nothing, re-run `ls -l /dev/input/by-path/` and confirm the service uses the correct `*-event-kbd` path.
-- Queue state is stored in memory, so restarting the server clears the display.
+- If the TV cannot load the page, confirm `qsys-server.service` is running and
+  open `http://<pi-ip-address>:8080/` from a browser on the same network.
+- If port `8080` is already in use, stop the other process or change `PORT` in
+  `.env.example`, then rerun the installer.
+- If the interceptor reports permission errors, add the service user to the
+  `input` group and restart the login session or service.
+- If keypad input does nothing, regenerate `.env` and restart the interceptor.

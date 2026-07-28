@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Update .env keypad paths from `ls -l /dev/input/by-path/` output."""
+"""Overwrite .env from .env.example and update keypad input device paths."""
 
 from __future__ import annotations
 
@@ -15,16 +15,6 @@ EXCLUDED_DEVICE_PATHS = (
     Path("/dev/input/by-id/usb-Keychron_Keychron_K6-event-kbd"),
     Path("/dev/input/by-id/usb-Logitech_USB_Keyboard-event-kbd"),
 )
-
-DEFAULT_ENV_VALUES = {
-    "PYTHONUNBUFFERED": "1",
-    "QSYS_LOG_LEVEL": "INFO",
-    "QSYS_QUEUE_URL": "http://127.0.0.1:8080/api/queue",
-    "QSYS_ACCEPT_ROW_DIGITS": "0",
-    "FOOD_DEVICE_PATH": "",
-    "DRINKS_DEVICE_PATH": "",
-    "CHICKEN_DEVICE_PATH": "",
-}
 
 DEVICE_ENV_KEYS = ("FOOD_DEVICE_PATH", "DRINKS_DEVICE_PATH", "CHICKEN_DEVICE_PATH")
 STATION_ENV_KEYS = {
@@ -57,8 +47,9 @@ def parse_device_order(raw_order: str) -> tuple[str, ...]:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Find *-event-kbd devices in ls output and write FOOD_DEVICE_PATH, "
-            "DRINKS_DEVICE_PATH, and CHICKEN_DEVICE_PATH into .env."
+            "Overwrite .env from .env.example, then update "
+            "FOOD_DEVICE_PATH, DRINKS_DEVICE_PATH, and CHICKEN_DEVICE_PATH "
+            "from detected *-event-kbd devices."
         )
     )
     parser.add_argument(
@@ -77,7 +68,7 @@ def parse_args() -> argparse.Namespace:
         "--example-file",
         type=Path,
         default=REPO_ROOT / ".env.example",
-        help="Template to copy from when .env does not exist. Default: repo .env.example",
+        help="Template used as the base for every .env write. Default: repo .env.example",
     )
     source = parser.add_mutually_exclusive_group()
     source.add_argument(
@@ -137,7 +128,7 @@ def read_ls_output(args: argparse.Namespace) -> str:
 
 def resolved_path(path: Path) -> Path | None:
     try:
-        return path.resolve()
+        return path.resolve(strict=True)
     except OSError:
         return None
 
@@ -183,8 +174,29 @@ def is_excluded_keyboard(
     return resolved is not None and str(resolved) in excluded_keys
 
 
+def device_target_key(link_path: Path, link_target: str) -> str:
+    resolved = resolved_path(link_path)
+    if resolved:
+        return str(resolved)
+
+    target_path = Path(link_target)
+    if not target_path.is_absolute():
+        target_path = link_path.parent / target_path
+
+    return os.path.normpath(str(target_path))
+
+
+def is_usb_revision_path(path: str) -> bool:
+    return "-usbv" in Path(path).name
+
+
+def prefer_keyboard_path(candidate: str, existing: str) -> bool:
+    return is_usb_revision_path(existing) and not is_usb_revision_path(candidate)
+
+
 def parse_keyboard_paths(ls_output: str, device_dir: Path) -> list[str]:
     paths: list[str] = []
+    path_indexes_by_target: dict[str, int] = {}
     excluded_keys = excluded_device_keys()
 
     for raw_line in ls_output.splitlines():
@@ -209,8 +221,13 @@ def parse_keyboard_paths(ls_output: str, device_dir: Path) -> list[str]:
             continue
 
         path = str(link_path)
-        if path not in paths:
+        target_key = device_target_key(link_path, link_target)
+        existing_index = path_indexes_by_target.get(target_key)
+        if existing_index is None:
+            path_indexes_by_target[target_key] = len(paths)
             paths.append(path)
+        elif prefer_keyboard_path(path, paths[existing_index]):
+            paths[existing_index] = path
 
     return paths
 
@@ -222,27 +239,6 @@ def env_key(line: str) -> str | None:
 
     key = stripped.split("=", 1)[0].strip()
     return key or None
-
-
-def has_key(lines: list[str], key: str) -> bool:
-    return any(env_key(line) == key for line in lines)
-
-
-def append_missing_defaults(lines: list[str]) -> list[str]:
-    missing = [
-        (key, value)
-        for key, value in DEFAULT_ENV_VALUES.items()
-        if not has_key(lines, key)
-    ]
-    if not missing:
-        return lines
-
-    updated = list(lines)
-    if updated and updated[-1].strip():
-        updated.append("")
-    for key, value in missing:
-        updated.append(f"{key}={value}")
-    return updated
 
 
 def set_env_values(lines: list[str], values: dict[str, str]) -> list[str]:
@@ -268,10 +264,7 @@ def set_env_values(lines: list[str], values: dict[str, str]) -> list[str]:
     return updated
 
 
-def load_env_lines(env_file: Path, example_file: Path) -> list[str]:
-    if env_file.exists():
-        return env_file.read_text().splitlines()
-
+def load_env_lines(example_file: Path) -> list[str]:
     if example_file.exists():
         return example_file.read_text().splitlines()
 
@@ -282,48 +275,57 @@ def build_env_text(lines: list[str]) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
+def warn(message: str) -> None:
+    print(f"Warning: {message}", file=sys.stderr)
+
+
+def write_env_text(args: argparse.Namespace, lines: list[str]) -> None:
+    env_text = build_env_text(lines)
+
+    if args.dry_run:
+        print(env_text, end="")
+        return
+
+    args.env_file.parent.mkdir(parents=True, exist_ok=True)
+    args.env_file.write_text(env_text)
+    print(f"Wrote {args.env_file}", flush=True)
+
+
 def main() -> int:
     args = parse_args()
+    lines = load_env_lines(args.example_file)
 
     try:
         ls_output = read_ls_output(args)
     except OSError as exc:
-        print(f"Could not read ls output: {exc}", file=sys.stderr)
-        return 1
+        write_env_text(args, lines)
+        warn(f"could not read ls output: {exc}")
+        return 0
     except RuntimeError as exc:
-        print(f"Could not run ls: {exc}", file=sys.stderr)
-        return 1
+        write_env_text(args, lines)
+        warn(f"could not run ls: {exc}")
+        return 0
 
     keyboard_paths = parse_keyboard_paths(ls_output, args.device_dir)
     if args.swap and len(keyboard_paths) >= 2:
         keyboard_paths[0], keyboard_paths[1] = keyboard_paths[1], keyboard_paths[0]
 
     if not keyboard_paths:
-        print(
-            f"No usable *-event-kbd devices found. Run `ls -l {args.device_dir}/` "
+        write_env_text(args, lines)
+        warn(
+            f"no usable *-event-kbd devices found. Run `ls -l {args.device_dir}/` "
             "and confirm the keypad is connected. The Keychron dev keyboard is "
-            "excluded automatically.",
-            file=sys.stderr,
+            "excluded automatically."
         )
-        return 1
+        return 0
 
     device_values = dict.fromkeys(DEVICE_ENV_KEYS, "")
     for env_key, keyboard_path in zip(args.order, keyboard_paths):
         device_values[env_key] = keyboard_path
 
-    lines = load_env_lines(args.env_file, args.example_file)
-    lines = append_missing_defaults(lines)
     lines = set_env_values(lines, device_values)
-    env_text = build_env_text(lines)
-
-    if args.dry_run:
-        print(env_text, end="")
-        summary_stream = sys.stderr
-    else:
-        args.env_file.parent.mkdir(parents=True, exist_ok=True)
-        args.env_file.write_text(env_text)
-        summary_stream = sys.stdout
-        print(f"Wrote {args.env_file}", file=summary_stream)
+    write_env_text(args, lines)
+    summary_stream = sys.stderr if args.dry_run else sys.stdout
 
     print(
         f"{DEVICE_ENV_KEYS[0]}={device_values[DEVICE_ENV_KEYS[0]]}",
